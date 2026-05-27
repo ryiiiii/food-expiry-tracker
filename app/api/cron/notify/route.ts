@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Food } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendSlackNotification } from "@/lib/slack";
+
+type FoodRecord = {
+  id: number;
+  name: string;
+  expiryType: string;
+  expiryDate: Date;
+  memo: string | null;
+  notified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export async function GET(request: NextRequest) {
   // Vercel Cron Jobs のセキュリティ確認
@@ -37,7 +47,7 @@ export async function GET(request: NextRequest) {
     );
 
     // 明日が期限かつ未通知の食品を取得
-    const foodsToNotify: Food[] = await prisma.food.findMany({
+    const foodsToNotify: FoodRecord[] = await prisma.food.findMany({
       where: {
         expiryDate: {
           gte: tomorrowStart,

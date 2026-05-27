@@ -234,6 +234,8 @@ export default function FoodList() {
                         .toISOString()
                         .split("T")[0],
                       expiryType: editingFood.expiryType as "消費期限" | "賞味期限",
+                      quantity: editingFood.quantity?.toString() ?? "",
+                      unit: editingFood.unit ?? "",
                       memo: editingFood.memo || "",
                     }
                   : undefined

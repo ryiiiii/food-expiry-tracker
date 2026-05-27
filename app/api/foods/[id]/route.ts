@@ -14,7 +14,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, expiryType, expiryDate, memo } = body;
+    const { name, expiryType, expiryDate, quantity, unit, memo } = body;
 
     if (!name || !expiryType || !expiryDate) {
       return NextResponse.json(
@@ -29,6 +29,8 @@ export async function PUT(
         name,
         expiryType,
         expiryDate: new Date(expiryDate),
+        quantity: quantity ? parseInt(quantity, 10) : null,
+        unit: unit || null,
         memo: memo || null,
         // 日付が変わったら再通知できるようリセット
         notified: false,

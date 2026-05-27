@@ -6,8 +6,13 @@ export type FoodFormData = {
   name: string;
   expiryType: "消費期限" | "賞味期限";
   expiryDate: string;
+  quantity: string;
+  unit: string;
   memo: string;
 };
+
+// よく使う単位の候補リスト
+const UNIT_SUGGESTIONS = ["個", "本", "パック", "袋", "枚", "切れ", "束", "缶", "瓶", "箱", "g", "kg", "ml", "L", "人前"];
 
 type Props = {
   initialData?: FoodFormData & { id?: number };
@@ -26,6 +31,8 @@ export default function FoodForm({
     name: "",
     expiryType: "消費期限",
     expiryDate: "",
+    quantity: "",
+    unit: "",
     memo: "",
   });
 
@@ -35,6 +42,8 @@ export default function FoodForm({
         name: initialData.name,
         expiryType: initialData.expiryType,
         expiryDate: initialData.expiryDate,
+        quantity: initialData.quantity ?? "",
+        unit: initialData.unit ?? "",
         memo: initialData.memo || "",
       });
     }
@@ -47,6 +56,7 @@ export default function FoodForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* 食品名 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           食品名 <span className="text-red-500">*</span>
@@ -61,6 +71,7 @@ export default function FoodForm({
         />
       </div>
 
+      {/* 期限の種別 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           期限の種別 <span className="text-red-500">*</span>
@@ -97,6 +108,7 @@ export default function FoodForm({
         </p>
       </div>
 
+      {/* 期限日 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           期限日 <span className="text-red-500">*</span>
@@ -113,6 +125,41 @@ export default function FoodForm({
         </div>
       </div>
 
+      {/* 数量・単位 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          数量・単位（任意）
+        </label>
+        <div className="flex gap-2">
+          {/* 数量 */}
+          <input
+            type="number"
+            min="1"
+            value={form.quantity}
+            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+            placeholder="例：2"
+            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
+          {/* 単位：候補リスト付き自由入力 */}
+          <div className="flex-1">
+            <input
+              type="text"
+              list="unit-suggestions"
+              value={form.unit}
+              onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              placeholder="個・本・パック など"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+            <datalist id="unit-suggestions">
+              {UNIT_SUGGESTIONS.map((u) => (
+                <option key={u} value={u} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+      </div>
+
+      {/* メモ */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           メモ（任意）
@@ -126,6 +173,7 @@ export default function FoodForm({
         />
       </div>
 
+      {/* ボタン */}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"

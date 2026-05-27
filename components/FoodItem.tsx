@@ -7,6 +7,8 @@ export type Food = {
   name: string;
   expiryType: string;
   expiryDate: string;
+  quantity: number | null;
+  unit: string | null;
   memo: string | null;
   notified: boolean;
   createdAt: string;
@@ -92,10 +94,18 @@ export default function FoodItem({ food, onEdit, onDelete }: Props) {
     day: "numeric",
   });
 
+  // 数量・単位の表示文字列（どちらかだけでも表示）
+  const quantityLabel =
+    food.quantity != null && food.unit
+      ? `${food.quantity} ${food.unit}`
+      : food.quantity != null
+      ? `${food.quantity}`
+      : food.unit
+      ? food.unit
+      : null;
+
   return (
-    <div
-      className={`border rounded-xl p-4 transition-all ${bg}`}
-    >
+    <div className={`border rounded-xl p-4 transition-all ${bg}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -103,6 +113,11 @@ export default function FoodItem({ food, onEdit, onDelete }: Props) {
             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
               {food.expiryType}
             </span>
+            {quantityLabel && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
+                {quantityLabel}
+              </span>
+            )}
             {food.notified && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 whitespace-nowrap">
                 📬 通知済

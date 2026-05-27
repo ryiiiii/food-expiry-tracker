@@ -14,6 +14,7 @@ export default function FoodList() {
   const [editingFood, setEditingFood] = useState<Food | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState<"all" | "urgent" | "expired">("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchFoods = useCallback(async () => {
     try {
@@ -90,14 +91,23 @@ export default function FoodList() {
   today.setHours(0, 0, 0, 0);
 
   const filteredFoods = foods.filter((food) => {
+    // 期限フィルター
     const expiry = new Date(food.expiryDate);
     expiry.setHours(0, 0, 0, 0);
     const daysLeft = Math.floor(
       (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
+    if (filter === "urgent" && !(daysLeft >= 0 && daysLeft <= 3)) return false;
+    if (filter === "expired" && !(daysLeft < 0)) return false;
 
-    if (filter === "urgent") return daysLeft >= 0 && daysLeft <= 3;
-    if (filter === "expired") return daysLeft < 0;
+    // キーワード検索（食品名・メモの部分一致）
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      const matchName = food.name.toLowerCase().includes(q);
+      const matchMemo = food.memo?.toLowerCase().includes(q) ?? false;
+      if (!matchName && !matchMemo) return false;
+    }
+
     return true;
   });
 
@@ -139,7 +149,27 @@ export default function FoodList() {
 
   return (
     <div>
-      {/* ヘッダーアクション */}
+      {/* 検索欄 */}
+      <div className="relative mb-4">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="食品名・メモで検索"
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {/* フィルター & 追加ボタン */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-2 flex-wrap">
           <button
@@ -187,13 +217,15 @@ export default function FoodList() {
         <div className="text-center py-16 text-gray-400">
           <p className="text-4xl mb-3">🥗</p>
           <p className="text-lg font-medium text-gray-500">
-            {filter === "all"
+            {searchQuery.trim()
+              ? `「${searchQuery}」に一致する食品はありません`
+              : filter === "all"
               ? "まだ食品が登録されていません"
               : filter === "urgent"
               ? "期限が近い食品はありません"
               : "期限切れの食品はありません"}
           </p>
-          {filter === "all" && (
+          {!searchQuery.trim() && filter === "all" && (
             <p className="text-sm mt-1">「食品を追加」ボタンから登録してみましょう</p>
           )}
         </div>
@@ -213,7 +245,7 @@ export default function FoodList() {
       {/* モーダル */}
       {modalMode && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setModalMode(null);
@@ -221,7 +253,7 @@ export default function FoodList() {
             }
           }}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in slide-in-from-bottom-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 overflow-y-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
             <h2 className="text-lg font-bold text-gray-800 mb-5">
               {modalMode === "add" ? "🥬 食品を追加" : "✏️ 食品を編集"}
             </h2>

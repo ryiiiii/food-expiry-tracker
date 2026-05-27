@@ -21,11 +21,18 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, expiryType, expiryDate, quantity, unit, memo } = body;
+    const { name, expiryType, expiryDate, quantity, unit, frozen, memo } = body;
 
-    if (!name || !expiryType || !expiryDate) {
+    if (!name || !expiryType) {
       return NextResponse.json(
-        { error: "名前・種別・期限日は必須です" },
+        { error: "名前・種別は必須です" },
+        { status: 400 }
+      );
+    }
+    // 冷凍でない場合は期限日が必須
+    if (!frozen && !expiryDate) {
+      return NextResponse.json(
+        { error: "冷凍でない場合は期限日が必須です" },
         { status: 400 }
       );
     }
@@ -34,9 +41,10 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         expiryType,
-        expiryDate: new Date(expiryDate),
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
         quantity: quantity ? parseInt(quantity, 10) : null,
         unit: unit || null,
+        frozen: frozen ?? false,
         memo: memo || null,
         notified: false,
       },

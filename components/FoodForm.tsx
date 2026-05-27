@@ -8,10 +8,10 @@ export type FoodFormData = {
   expiryDate: string;
   quantity: string;
   unit: string;
+  frozen: boolean;
   memo: string;
 };
 
-// よく使う単位の候補リスト
 const UNIT_SUGGESTIONS = ["個", "本", "パック", "袋", "枚", "切れ", "束", "缶", "瓶", "箱", "g", "kg", "ml", "L", "人前"];
 
 type Props = {
@@ -21,18 +21,14 @@ type Props = {
   isSubmitting?: boolean;
 };
 
-export default function FoodForm({
-  initialData,
-  onSubmit,
-  onCancel,
-  isSubmitting,
-}: Props) {
+export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting }: Props) {
   const [form, setForm] = useState<FoodFormData>({
     name: "",
     expiryType: "消費期限",
     expiryDate: "",
     quantity: "",
     unit: "",
+    frozen: false,
     memo: "",
   });
 
@@ -44,6 +40,7 @@ export default function FoodForm({
         expiryDate: initialData.expiryDate,
         quantity: initialData.quantity ?? "",
         unit: initialData.unit ?? "",
+        frozen: initialData.frozen ?? false,
         memo: initialData.memo || "",
       });
     }
@@ -91,12 +88,7 @@ export default function FoodForm({
                 name="expiryType"
                 value={type}
                 checked={form.expiryType === type}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    expiryType: e.target.value as "消費期限" | "賞味期限",
-                  })
-                }
+                onChange={(e) => setForm({ ...form, expiryType: e.target.value as "消費期限" | "賞味期限" })}
                 className="sr-only"
               />
               <span className="text-sm font-medium">{type}</span>
@@ -108,22 +100,49 @@ export default function FoodForm({
         </p>
       </div>
 
-      {/* 期限日 */}
+      {/* 冷凍トグル */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          期限日 <span className="text-red-500">*</span>
+        <label className="flex items-center gap-3 cursor-pointer select-none">
+          <div
+            onClick={() => setForm({ ...form, frozen: !form.frozen, expiryDate: !form.frozen ? "" : form.expiryDate })}
+            className={`relative w-11 h-6 rounded-full transition-colors ${
+              form.frozen ? "bg-blue-500" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                form.frozen ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </div>
+          <span className="text-sm font-medium text-gray-700">
+            🧊 冷凍庫に入れる
+          </span>
         </label>
-        {/* grid ラッパーで iOS Safari の date input 幅はみ出しを防ぐ */}
-        <div className="grid">
-          <input
-            type="date"
-            required
-            value={form.expiryDate}
-            onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          />
-        </div>
+        {form.frozen && (
+          <p className="text-xs text-blue-600 mt-1 ml-14">
+            冷凍中は期限日の管理は不要です
+          </p>
+        )}
       </div>
+
+      {/* 期限日（冷凍時は非表示） */}
+      {!form.frozen && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            期限日 <span className="text-red-500">*</span>
+          </label>
+          <div className="grid">
+            <input
+              type="date"
+              required
+              value={form.expiryDate}
+              onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+      )}
 
       {/* 数量・単位 */}
       <div>
@@ -131,7 +150,6 @@ export default function FoodForm({
           数量・単位（任意）
         </label>
         <div className="flex gap-2">
-          {/* 数量 */}
           <input
             type="number"
             min="1"
@@ -140,7 +158,6 @@ export default function FoodForm({
             placeholder="例：2"
             className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
-          {/* 単位：候補リスト付き自由入力 */}
           <div className="flex-1">
             <input
               type="text"

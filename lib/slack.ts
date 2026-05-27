@@ -1,7 +1,7 @@
 export async function sendSlackNotification(foods: {
   name: string;
   expiryType: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
 }[]): Promise<void> {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
 
@@ -12,11 +12,13 @@ export async function sendSlackNotification(foods: {
 
   const foodList = foods
     .map((food) => {
-      const dateStr = new Date(food.expiryDate).toLocaleDateString("ja-JP", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
+      const dateStr = food.expiryDate
+        ? new Date(food.expiryDate).toLocaleDateString("ja-JP", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : "日付不明";
       return `• *${food.name}* — ${food.expiryType}：${dateStr}`;
     })
     .join("\n");

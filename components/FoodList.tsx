@@ -13,7 +13,7 @@ export default function FoodList() {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingFood, setEditingFood] = useState<Food | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [filter, setFilter] = useState<"all" | "urgent" | "expired">("all");
+  const [filter, setFilter] = useState<"all" | "urgent" | "expired" | "frozen">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchFoods = useCallback(async () => {
@@ -90,15 +90,20 @@ export default function FoodList() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const filteredFoods = foods.filter((food) => {
-    // 期限フィルター
+  // 冷凍でない食品の残り日数を計算するヘルパー
+  const daysLeft = (food: Food) => {
+    if (food.frozen || !food.expiryDate) return null;
     const expiry = new Date(food.expiryDate);
     expiry.setHours(0, 0, 0, 0);
-    const daysLeft = Math.floor(
-      (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    if (filter === "urgent" && !(daysLeft >= 0 && daysLeft <= 3)) return false;
-    if (filter === "expired" && !(daysLeft < 0)) return false;
+    return Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const filteredFoods = foods.filter((food) => {
+    const d = daysLeft(food);
+    // 期限フィルター（冷凍品は「期限近い」「期限切れ」に出さない）
+    if (filter === "frozen")  return food.frozen;
+    if (filter === "urgent")  return d !== null && d >= 0 && d <= 3;
+    if (filter === "expired") return d !== null && d < 0;
 
     // キーワード検索（食品名・メモの部分一致）
     if (searchQuery.trim()) {
@@ -111,19 +116,9 @@ export default function FoodList() {
     return true;
   });
 
-  const urgentCount = foods.filter((food) => {
-    const expiry = new Date(food.expiryDate);
-    expiry.setHours(0, 0, 0, 0);
-    const d = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return d >= 0 && d <= 3;
-  }).length;
-
-  const expiredCount = foods.filter((food) => {
-    const expiry = new Date(food.expiryDate);
-    expiry.setHours(0, 0, 0, 0);
-    const d = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return d < 0;
-  }).length;
+  const urgentCount  = foods.filter((food) => { const d = daysLeft(food); return d !== null && d >= 0 && d <= 3; }).length;
+  const expiredCount = foods.filter((food) => { const d = daysLeft(food); return d !== null && d < 0; }).length;
+  const frozenCount  = foods.filter((food) => food.frozen).length;
 
   if (loading) {
     return (
@@ -202,6 +197,16 @@ export default function FoodList() {
           >
             期限切れ ({expiredCount})
           </button>
+          <button
+            onClick={() => setFilter("frozen")}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              filter === "frozen"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            🧊 冷凍中 ({frozenCount})
+          </button>
         </div>
         <button
           onClick={() => setModalMode("add")}
@@ -219,10 +224,9 @@ export default function FoodList() {
           <p className="text-lg font-medium text-gray-500">
             {searchQuery.trim()
               ? `「${searchQuery}」に一致する食品はありません`
-              : filter === "all"
-              ? "まだ食品が登録されていません"
-              : filter === "urgent"
-              ? "期限が近い食品はありません"
+              : filter === "all"     ? "まだ食品が登録されていません"
+              : filter === "urgent"  ? "期限が近い食品はありません"
+              : filter === "frozen"  ? "冷凍中の食品はありません"
               : "期限切れの食品はありません"}
           </p>
           {!searchQuery.trim() && filter === "all" && (
@@ -262,12 +266,13 @@ export default function FoodList() {
                 editingFood
                   ? {
                       ...editingFood,
-                      expiryDate: new Date(editingFood.expiryDate)
-                        .toISOString()
-                        .split("T")[0],
+                      expiryDate: editingFood.expiryDate
+                        ? new Date(editingFood.expiryDate).toISOString().split("T")[0]
+                        : "",
                       expiryType: editingFood.expiryType as "消費期限" | "賞味期限",
                       quantity: editingFood.quantity?.toString() ?? "",
                       unit: editingFood.unit ?? "",
+                      frozen: editingFood.frozen,
                       memo: editingFood.memo || "",
                     }
                   : undefined

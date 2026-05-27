@@ -6,7 +6,10 @@ type FoodRecord = {
   id: number;
   name: string;
   expiryType: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
+  quantity: number | null;
+  unit: string | null;
+  frozen: boolean;
   memo: string | null;
   notified: boolean;
   createdAt: Date;
@@ -33,22 +36,19 @@ export async function GET(request: NextRequest) {
       tomorrow.getFullYear(),
       tomorrow.getMonth(),
       tomorrow.getDate(),
-      0,
-      0,
-      0
+      0, 0, 0
     );
     const tomorrowEnd = new Date(
       tomorrow.getFullYear(),
       tomorrow.getMonth(),
       tomorrow.getDate(),
-      23,
-      59,
-      59
+      23, 59, 59
     );
 
-    // 明日が期限かつ未通知の食品を取得
+    // 明日が期限・未通知・冷凍でない食品を取得
     const foodsToNotify: FoodRecord[] = await prisma.food.findMany({
       where: {
+        frozen: false,
         expiryDate: {
           gte: tomorrowStart,
           lte: tomorrowEnd,

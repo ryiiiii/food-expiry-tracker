@@ -10,14 +10,15 @@ datasource db {
 }
 
 model Food {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   name       String
-  expiryType String   // "消費期限" | "賞味期限"
-  expiryDate DateTime
-  quantity   Int?     // 数量（任意）
-  unit       String?  // 単位（個・本・パックなど）
+  expiryType String    // "消費期限" | "賞味期限"
+  expiryDate DateTime? // 冷凍時は不要なので nullable
+  quantity   Int?      // 数量（任意）
+  unit       String?   // 単位（個・本・パックなど）
+  frozen     Boolean   @default(false) // 冷凍庫フラグ
   memo       String?
-  notified   Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  notified   Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 }

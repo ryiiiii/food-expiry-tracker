@@ -9,7 +9,7 @@ export default function Home() {
           <span className="text-2xl">🥬</span>
           <div>
             <h1 className="text-xl font-bold text-gray-800">ストックまどの食品管理</h1>
-            <p className="text-xs text-gray-500">消費期限・賞味期限をかんたん管理</p>
+            <p className="text-xs text-gray-500">消費期限・賞味期限切れはもううんざりよ</p>
           </div>
         </div>
       </header>

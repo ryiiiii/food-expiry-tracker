@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Food } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendSlackNotification } from "@/lib/slack";
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
     );
 
     // 明日が期限かつ未通知の食品を取得
-    const foodsToNotify = await prisma.food.findMany({
+    const foodsToNotify: Food[] = await prisma.food.findMany({
       where: {
         expiryDate: {
           gte: tomorrowStart,

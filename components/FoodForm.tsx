@@ -57,7 +57,7 @@ export default function FoodForm({
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           placeholder="例：牛乳、鶏もも肉"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
         />
       </div>
 
@@ -101,13 +101,16 @@ export default function FoodForm({
         <label className="block text-sm font-medium text-gray-700 mb-1">
           期限日 <span className="text-red-500">*</span>
         </label>
-        <input
-          type="date"
-          required
-          value={form.expiryDate}
-          onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
-          className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        />
+        {/* grid ラッパーで iOS Safari の date input 幅はみ出しを防ぐ */}
+        <div className="grid">
+          <input
+            type="date"
+            required
+            value={form.expiryDate}
+            onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          />
+        </div>
       </div>
 
       <div>
@@ -119,7 +122,7 @@ export default function FoodForm({
           onChange={(e) => setForm({ ...form, memo: e.target.value })}
           placeholder="保存場所や注意点など"
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
         />
       </div>
 

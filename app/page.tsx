@@ -8,7 +8,7 @@ export default function Home() {
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <span className="text-2xl">🥬</span>
           <div>
-            <h1 className="text-xl font-bold text-gray-800">食品期限管理</h1>
+            <h1 className="text-xl font-bold text-gray-800">ストックまどの食品管理</h1>
             <p className="text-xs text-gray-500">消費期限・賞味期限をかんたん管理</p>
           </div>
         </div>
@@ -21,7 +21,7 @@ export default function Home() {
 
       {/* フッター */}
       <footer className="text-center text-xs text-gray-400 py-6">
-        <p>食品期限管理アプリ</p>
+        <p>ストックまどの食品管理</p>
       </footer>
     </div>
   );

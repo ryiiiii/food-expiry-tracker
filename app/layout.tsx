@@ -8,7 +8,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "食品期限管理",
+  title: "ストックまどの食品管理",
   description: "食品の消費期限・賞味期限を管理するアプリ",
 };
 

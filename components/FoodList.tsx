@@ -282,6 +282,7 @@ export default function FoodList() {
                     }
                   : undefined
               }
+              nameSuggestions={[...new Set(foods.map((f) => f.name))].sort()}
               onSubmit={modalMode === "add" ? handleAdd : handleEdit}
               onCancel={() => {
                 setModalMode(null);

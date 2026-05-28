@@ -19,9 +19,10 @@ type Props = {
   onSubmit: (data: FoodFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
+  nameSuggestions?: string[]; // 登録済み食品名の候補
 };
 
-export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting }: Props) {
+export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting, nameSuggestions = [] }: Props) {
   const [form, setForm] = useState<FoodFormData>({
     name: "",
     expiryType: "消費期限",
@@ -60,12 +61,20 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
         </label>
         <input
           type="text"
+          list="name-suggestions"
           required
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           placeholder="例：牛乳、鶏もも肉"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
         />
+        {nameSuggestions.length > 0 && (
+          <datalist id="name-suggestions">
+            {nameSuggestions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        )}
       </div>
 
       {/* 期限の種別 */}

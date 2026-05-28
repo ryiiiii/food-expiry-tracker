@@ -37,18 +37,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const food = await prisma.food.create({
-      data: {
-        name,
-        expiryType,
-        expiryDate: expiryDate ? new Date(expiryDate) : null,
-        quantity: quantity ? parseInt(quantity, 10) : null,
-        unit: unit || null,
-        frozen: frozen ?? false,
-        memo: memo || null,
-        notified: false,
-      },
-    });
+    const [food] = await prisma.$transaction([
+      prisma.food.create({
+        data: {
+          name,
+          expiryType,
+          expiryDate: expiryDate ? new Date(expiryDate) : null,
+          quantity: quantity ? parseInt(quantity, 10) : null,
+          unit: unit || null,
+          frozen: frozen ?? false,
+          memo: memo || null,
+          notified: false,
+        },
+      }),
+      prisma.foodName.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      }),
+    ]);
 
     return NextResponse.json(food, { status: 201 });
   } catch (error) {

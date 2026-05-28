@@ -9,6 +9,13 @@ datasource db {
   provider = "sqlite"
 }
 
+// 一度でも登録した食品名の履歴（削除されても残す）
+model FoodName {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
 model Food {
   id         Int       @id @default(autoincrement())
   name       String

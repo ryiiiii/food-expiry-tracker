@@ -8,6 +8,7 @@ type ModalMode = "add" | "edit" | null;
 
 export default function FoodList() {
   const [foods, setFoods] = useState<Food[]>([]);
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -29,9 +30,21 @@ export default function FoodList() {
     }
   }, []);
 
+  const fetchNameSuggestions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/foods/names");
+      if (!res.ok) return;
+      const data = await res.json();
+      setNameSuggestions(data);
+    } catch {
+      // サジェスト取得失敗は無視
+    }
+  }, []);
+
   useEffect(() => {
     fetchFoods();
-  }, [fetchFoods]);
+    fetchNameSuggestions();
+  }, [fetchFoods, fetchNameSuggestions]);
 
   const handleAdd = async (data: FoodFormData) => {
     setSubmitting(true);
@@ -43,6 +56,7 @@ export default function FoodList() {
       });
       if (!res.ok) throw new Error("追加に失敗しました");
       await fetchFoods();
+      fetchNameSuggestions();
       setModalMode(null);
     } catch (e) {
       alert(e instanceof Error ? e.message : "エラーが発生しました");
@@ -282,7 +296,7 @@ export default function FoodList() {
                     }
                   : undefined
               }
-              nameSuggestions={[...new Set(foods.map((f) => f.name))].sort()}
+              nameSuggestions={nameSuggestions}
               onSubmit={modalMode === "add" ? handleAdd : handleEdit}
               onCancel={() => {
                 setModalMode(null);

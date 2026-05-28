@@ -1,4 +1,4 @@
-name: 🤖 Auto-implement from Issue
+name: Auto-implement from Issue
 
 on:
   issues:
@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. チェックアウト ──────────────────────────────────
+      # ── 1. チェックアウト ──────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Node.js セットアップ ────────────────────────────
+      # ── 2. Node.js セットアップ ────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,44 +28,53 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ── 3. 作業ブランチ作成 ────────────────────────────────
+      # ── 3. 作業ブランチ作成 ──────────────────────────────────────
       - name: Create feature branch
         run: |
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git checkout -b "issue-${{ github.event.issue.number }}"
 
-      # ── 4. プロンプトをファイルに書き出す ──────────────────
+      # ── 4. プロンプトをファイルに書き出す（Python で安全に生成） ──
       - name: Write prompt
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const { number, title, body } = context.payload.issue;
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          python3 - << 'PYEOF'
+          import os, textwrap
+          number = os.environ.get('ISSUE_NUMBER', '')
+          title  = os.environ.get('ISSUE_TITLE', '')
+          body   = os.environ.get('ISSUE_BODY', '（本文なし）')
 
-            const prompt = `# タスク
-以下の GitHub Issue を実装してください。
+          prompt = textwrap.dedent(f"""
+          # タスク
+          以下の GitHub Issue を実装してください。
 
-## Issue #${number}: ${title}
+          ## Issue #{number}: {title}
 
-${body ?? '（本文なし）'}
+          {body}
 
-## 実装ルール
-- プロジェクト: food_expiry_tracker（Next.js + Prisma 7 + Turso/SQLite + Tailwind CSS v4）
-- 既存ファイルをよく読んでから実装し、既存のスタイルとパターンに合わせること
-- Prisma スキーマを変更する場合は \`npx prisma migrate dev --name <name>\` を実行すること
-- 最後に \`npm run build\` を実行してビルドが通ることを必ず確認すること
-- 実装が難しい点・仕様の不明点・懸念点がある場合は、
-  出力の末尾を以下の形式にすること（ない場合は不要）：
+          ## 実装ルール
+          - プロジェクト: food_expiry_tracker（Next.js + Prisma 7 + Turso/SQLite + Tailwind CSS v4）
+          - 既存ファイルをよく読んでから実装し、既存のスタイルとパターンに合わせること
+          - Prisma スキーマを変更する場合は `npx prisma migrate dev --name <name>` を実行すること
+          - 最後に `npm run build` を実行してビルドが通ることを必ず確認すること
+          - 実装が難しい点・仕様の不明点・懸念点がある場合は、出力の末尾を以下の形式にすること:
 
-CONCERNS_START
-（懸念点の内容）
-CONCERNS_END`;
+          CONCERNS_START
+          （懸念点の内容）
+          CONCERNS_END
+          """).strip()
 
-            fs.writeFileSync('/tmp/issue_prompt.txt', prompt, 'utf8');
-            console.log(`Prompt written for Issue #${number}`);
+          with open('/tmp/issue_prompt.txt', 'w', encoding='utf-8') as f:
+              f.write(prompt)
 
-      # ── 5. Claude Code 実行 ────────────────────────────────
+          print(f"Prompt written for Issue #{number}")
+          PYEOF
+
+      # ── 5. Claude Code 実行 ────────────────────────────────────
       - name: Run Claude Code
         id: claude
         env:
@@ -79,39 +88,40 @@ CONCERNS_END`;
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           set -e
 
-      # ── 6. コミット & プッシュ ─────────────────────────────
+      # ── 6. コミット & プッシュ ─────────────────────────────────
       - name: Commit and push
         id: commit
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           if git status --porcelain | grep -q .; then
             git add -A
-            git commit -m "feat: implement #${{ github.event.issue.number }} - ${{ github.event.issue.title }}
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
-            git push origin "issue-${{ github.event.issue.number }}"
+            git commit -m "feat: implement #${ISSUE_NUMBER} - ${ISSUE_TITLE}"
+            git push origin "issue-${ISSUE_NUMBER}"
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # ── 7. PR 作成 ─────────────────────────────────────────
+      # ── 7. PR 作成 ─────────────────────────────────────────────
       - name: Create Pull Request
         id: pr
         if: steps.commit.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
+          printf 'Closes #%s\n\nAuto-implemented by Claude Code Bot.\n\nGenerated with [Claude Code](https://claude.com/claude-code)' \
+            "$ISSUE_NUMBER" > /tmp/pr_body.txt
           PR_URL=$(gh pr create \
-            --title "feat: ${{ github.event.issue.title }}" \
-            --body "Closes #${{ github.event.issue.number }}
-
-🤖 このPRはClaude Code Botにより自動生成されました。
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)" \
+            --title "feat: ${ISSUE_TITLE}" \
+            --body-file /tmp/pr_body.txt \
             --base main)
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
 
-      # ── 8. Issue にコメント（常に実行）──────────────────────
+      # ── 8. Issue にコメント（常に実行） ────────────────────────
       - name: Comment on Issue
         if: always()
         uses: actions/github-script@v7
@@ -132,7 +142,6 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
             const prUrl      = process.env.PR_URL;
             const runUrl     = process.env.RUN_URL;
 
-            // 懸念点を抽出
             const concernsMatch = output.match(/CONCERNS_START\n([\s\S]*?)\nCONCERNS_END/);
             const concerns = concernsMatch ? concernsMatch[1].trim() : null;
 

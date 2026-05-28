@@ -14,7 +14,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, expiryType, expiryDate, quantity, unit, frozen, memo } = body;
+    const { name, expiryType, expiryDate, quantity, unit, frozen, category, memo } = body;
 
     if (!name || !expiryType) {
       return NextResponse.json(
@@ -38,6 +38,7 @@ export async function PUT(
         quantity: quantity ? parseInt(quantity, 10) : null,
         unit: unit || null,
         frozen: frozen ?? false,
+        category: category || null,
         memo: memo || null,
         notified: false,
       },

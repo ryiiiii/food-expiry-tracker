@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import FoodItem, { type Food } from "./FoodItem";
-import FoodForm, { type FoodFormData } from "./FoodForm";
+import FoodForm, { type FoodFormData, FOOD_CATEGORIES, type FoodCategory } from "./FoodForm";
 
 type ModalMode = "add" | "edit" | null;
 
@@ -15,6 +15,7 @@ export default function FoodList() {
   const [editingFood, setEditingFood] = useState<Food | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState<"all" | "urgent" | "expired" | "frozen">("all");
+  const [categoryFilter, setCategoryFilter] = useState<FoodCategory | "">("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchFoods = useCallback(async () => {
@@ -114,12 +115,16 @@ export default function FoodList() {
 
   const filteredFoods = foods.filter((food) => {
     const d = daysLeft(food);
-    // 期限フィルター
+
+    // ステータスフィルター
     if (filter === "frozen")  return food.frozen;
     if (filter === "urgent")  return d !== null && d >= 0 && d <= 3;
     if (filter === "expired") return d !== null && d < 0;
     // "all"（期限あり）: 冷凍品を除外
     if (food.frozen) return false;
+
+    // カテゴリフィルター
+    if (categoryFilter && food.category !== categoryFilter) return false;
 
     // キーワード検索（食品名・メモの部分一致）
     if (searchQuery.trim()) {
@@ -180,8 +185,8 @@ export default function FoodList() {
         )}
       </div>
 
-      {/* フィルター & 追加ボタン */}
-      <div className="flex items-center justify-between mb-6">
+      {/* ステータスフィルター & 追加ボタン */}
+      <div className="flex items-center justify-between mb-3">
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setFilter("all")}
@@ -226,12 +231,40 @@ export default function FoodList() {
         </div>
         <button
           onClick={() => setModalMode("add")}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm"
+          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm shrink-0 ml-2"
         >
           <span>＋</span>
           <span className="hidden sm:inline">食品を追加</span>
         </button>
       </div>
+
+      {/* カテゴリフィルター（期限ありタブのみ表示） */}
+      {filter === "all" && (
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+          {FOOD_CATEGORIES.map(({ value, emoji, label }) => (
+            <button
+              key={value}
+              onClick={() => setCategoryFilter(categoryFilter === value ? "" : value)}
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
+                categoryFilter === value
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-green-300"
+              }`}
+            >
+              <span>{emoji}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+          {categoryFilter && (
+            <button
+              onClick={() => setCategoryFilter("")}
+              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200"
+            >
+              ✕ 解除
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 食品リスト */}
       {filteredFoods.length === 0 ? (
@@ -240,12 +273,14 @@ export default function FoodList() {
           <p className="text-lg font-medium text-gray-500">
             {searchQuery.trim()
               ? `「${searchQuery}」に一致する食品はありません`
+              : categoryFilter
+              ? `「${categoryFilter}」の食品はありません`
               : filter === "all"     ? "期限が設定された食品はありません"
               : filter === "urgent"  ? "期限が近い食品はありません"
               : filter === "frozen"  ? "冷凍中の食品はありません"
               : "期限切れの食品はありません"}
           </p>
-          {!searchQuery.trim() && filter === "all" && (
+          {!searchQuery.trim() && !categoryFilter && filter === "all" && (
             <p className="text-sm mt-1">「食品を追加」ボタンから登録してみましょう</p>
           )}
           {!searchQuery.trim() && filter === "frozen" && (
@@ -292,6 +327,7 @@ export default function FoodList() {
                       quantity: editingFood.quantity?.toString() ?? "",
                       unit: editingFood.unit ?? "",
                       frozen: editingFood.frozen,
+                      category: (editingFood.category as FoodCategory) ?? "",
                       memo: editingFood.memo || "",
                     }
                   : undefined

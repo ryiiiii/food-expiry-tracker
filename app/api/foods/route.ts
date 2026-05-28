@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, expiryType, expiryDate, quantity, unit, frozen, memo } = body;
+    const { name, expiryType, expiryDate, quantity, unit, frozen, category, memo } = body;
 
     if (!name || !expiryType) {
       return NextResponse.json(
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
           quantity: quantity ? parseInt(quantity, 10) : null,
           unit: unit || null,
           frozen: frozen ?? false,
+          category: category || null,
           memo: memo || null,
           notified: false,
         },

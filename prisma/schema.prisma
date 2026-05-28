@@ -24,6 +24,7 @@ model Food {
   quantity   Int?      // 数量（任意）
   unit       String?   // 単位（個・本・パックなど）
   frozen     Boolean   @default(false) // 冷凍庫フラグ
+  category   String?   // カテゴリ（任意）
   memo       String?
   notified   Boolean   @default(false)
   createdAt  DateTime  @default(now())

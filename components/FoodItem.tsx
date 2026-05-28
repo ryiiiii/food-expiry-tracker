@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FOOD_CATEGORIES } from "./FoodForm";
 
 export type Food = {
   id: number;
@@ -10,6 +11,7 @@ export type Food = {
   quantity: number | null;
   unit: string | null;
   frozen: boolean;
+  category: string | null;
   memo: string | null;
   notified: boolean;
   createdAt: string;
@@ -45,6 +47,11 @@ export default function FoodItem({ food, onEdit, onDelete }: Props) {
   // 冷凍品は期限バッジ不要
   const daysLeft = (!food.frozen && food.expiryDate) ? getDaysUntilExpiry(food.expiryDate) : null;
   const status   = daysLeft !== null ? getStatusStyle(daysLeft) : null;
+
+  // カテゴリのラベルを解決
+  const categoryInfo = food.category
+    ? FOOD_CATEGORIES.find((c) => c.value === food.category) ?? null
+    : null;
 
   // カード背景：冷凍品は水色系
   const cardBg = food.frozen
@@ -90,6 +97,11 @@ export default function FoodItem({ food, onEdit, onDelete }: Props) {
             {quantityLabel && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
                 {quantityLabel}
+              </span>
+            )}
+            {categoryInfo && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
+                {categoryInfo.emoji} {categoryInfo.label}
               </span>
             )}
             {food.notified && (

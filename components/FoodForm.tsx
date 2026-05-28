@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from "react";
 
+export type FoodCategory = "生鮮" | "飲料" | "調味料" | "加工・保存食" | "お菓子・パン";
+
+export const FOOD_CATEGORIES: { value: FoodCategory; emoji: string; label: string }[] = [
+  { value: "生鮮",       emoji: "🥩", label: "生鮮" },
+  { value: "飲料",       emoji: "🥤", label: "飲料" },
+  { value: "調味料",     emoji: "🧂", label: "調味料" },
+  { value: "加工・保存食", emoji: "🥫", label: "加工・保存食" },
+  { value: "お菓子・パン", emoji: "🍪", label: "お菓子・パン" },
+];
+
 export type FoodFormData = {
   name: string;
   expiryType: "消費期限" | "賞味期限";
@@ -9,6 +19,7 @@ export type FoodFormData = {
   quantity: string;
   unit: string;
   frozen: boolean;
+  category: FoodCategory | "";
   memo: string;
 };
 
@@ -30,6 +41,7 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
     quantity: "",
     unit: "",
     frozen: false,
+    category: "",
     memo: "",
   });
 
@@ -42,6 +54,7 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
         quantity: initialData.quantity ?? "",
         unit: initialData.unit ?? "",
         frozen: initialData.frozen ?? false,
+        category: (initialData.category as FoodCategory) ?? "",
         memo: initialData.memo || "",
       });
     }
@@ -107,6 +120,32 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
         <p className="text-xs text-gray-500 mt-1">
           消費期限：食べても安全な期限　／　賞味期限：品質が保たれる期限
         </p>
+      </div>
+
+      {/* カテゴリ */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          カテゴリ（任意）
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {FOOD_CATEGORIES.map(({ value, emoji, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() =>
+                setForm({ ...form, category: form.category === value ? "" : value })
+              }
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                form.category === value
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-green-400"
+              }`}
+            >
+              <span>{emoji}</span>
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 冷凍トグル */}

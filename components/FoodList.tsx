@@ -100,10 +100,12 @@ export default function FoodList() {
 
   const filteredFoods = foods.filter((food) => {
     const d = daysLeft(food);
-    // 期限フィルター（冷凍品は「期限近い」「期限切れ」に出さない）
+    // 期限フィルター
     if (filter === "frozen")  return food.frozen;
     if (filter === "urgent")  return d !== null && d >= 0 && d <= 3;
     if (filter === "expired") return d !== null && d < 0;
+    // "all"（期限あり）: 冷凍品を除外
+    if (food.frozen) return false;
 
     // キーワード検索（食品名・メモの部分一致）
     if (searchQuery.trim()) {
@@ -175,7 +177,7 @@ export default function FoodList() {
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
-            すべて ({foods.length})
+            期限あり ({foods.filter((f) => !f.frozen).length})
           </button>
           <button
             onClick={() => setFilter("urgent")}
@@ -224,13 +226,16 @@ export default function FoodList() {
           <p className="text-lg font-medium text-gray-500">
             {searchQuery.trim()
               ? `「${searchQuery}」に一致する食品はありません`
-              : filter === "all"     ? "まだ食品が登録されていません"
+              : filter === "all"     ? "期限が設定された食品はありません"
               : filter === "urgent"  ? "期限が近い食品はありません"
               : filter === "frozen"  ? "冷凍中の食品はありません"
               : "期限切れの食品はありません"}
           </p>
           {!searchQuery.trim() && filter === "all" && (
             <p className="text-sm mt-1">「食品を追加」ボタンから登録してみましょう</p>
+          )}
+          {!searchQuery.trim() && filter === "frozen" && (
+            <p className="text-sm mt-1">冷凍する食品を追加して「🧊 冷凍庫に入れる」をオンにしてみましょう</p>
           )}
         </div>
       ) : (

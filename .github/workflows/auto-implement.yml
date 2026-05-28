@@ -1,0 +1,157 @@
+name: 🤖 Auto-implement from Issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto-implement:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. チェックアウト ──────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Node.js セットアップ ────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 3. 作業ブランチ作成 ────────────────────────────────
+      - name: Create feature branch
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git checkout -b "issue-${{ github.event.issue.number }}"
+
+      # ── 4. プロンプトをファイルに書き出す ──────────────────
+      - name: Write prompt
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { number, title, body } = context.payload.issue;
+
+            const prompt = `# タスク
+以下の GitHub Issue を実装してください。
+
+## Issue #${number}: ${title}
+
+${body ?? '（本文なし）'}
+
+## 実装ルール
+- プロジェクト: food_expiry_tracker（Next.js + Prisma 7 + Turso/SQLite + Tailwind CSS v4）
+- 既存ファイルをよく読んでから実装し、既存のスタイルとパターンに合わせること
+- Prisma スキーマを変更する場合は \`npx prisma migrate dev --name <name>\` を実行すること
+- 最後に \`npm run build\` を実行してビルドが通ることを必ず確認すること
+- 実装が難しい点・仕様の不明点・懸念点がある場合は、
+  出力の末尾を以下の形式にすること（ない場合は不要）：
+
+CONCERNS_START
+（懸念点の内容）
+CONCERNS_END`;
+
+            fs.writeFileSync('/tmp/issue_prompt.txt', prompt, 'utf8');
+            console.log(`Prompt written for Issue #${number}`);
+
+      # ── 5. Claude Code 実行 ────────────────────────────────
+      - name: Run Claude Code
+        id: claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DATABASE_URL: "file:./dev.db"
+        run: |
+          set +e
+          claude --dangerously-skip-permissions \
+            -p "$(cat /tmp/issue_prompt.txt)" \
+            > /tmp/claude_output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      # ── 6. コミット & プッシュ ─────────────────────────────
+      - name: Commit and push
+        id: commit
+        run: |
+          if git status --porcelain | grep -q .; then
+            git add -A
+            git commit -m "feat: implement #${{ github.event.issue.number }} - ${{ github.event.issue.title }}
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+            git push origin "issue-${{ github.event.issue.number }}"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 7. PR 作成 ─────────────────────────────────────────
+      - name: Create Pull Request
+        id: pr
+        if: steps.commit.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_URL=$(gh pr create \
+            --title "feat: ${{ github.event.issue.title }}" \
+            --body "Closes #${{ github.event.issue.number }}
+
+🤖 このPRはClaude Code Botにより自動生成されました。
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)" \
+            --base main)
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      # ── 8. Issue にコメント（常に実行）──────────────────────
+      - name: Comment on Issue
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          CLAUDE_EXIT_CODE: ${{ steps.claude.outputs.exit_code }}
+          HAS_CHANGES: ${{ steps.commit.outputs.has_changes }}
+          PR_URL: ${{ steps.pr.outputs.pr_url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const output = (() => {
+              try { return fs.readFileSync('/tmp/claude_output.txt', 'utf8'); } catch { return ''; }
+            })();
+
+            const exitCode   = process.env.CLAUDE_EXIT_CODE;
+            const hasChanges = process.env.HAS_CHANGES;
+            const prUrl      = process.env.PR_URL;
+            const runUrl     = process.env.RUN_URL;
+
+            // 懸念点を抽出
+            const concernsMatch = output.match(/CONCERNS_START\n([\s\S]*?)\nCONCERNS_END/);
+            const concerns = concernsMatch ? concernsMatch[1].trim() : null;
+
+            let body;
+            if (exitCode && exitCode !== '0') {
+              body = `⚠️ 自動実装中にエラーが発生しました。\n\n[ワークフローログ](${runUrl}) を確認してください。`;
+            } else if (hasChanges === 'true' && prUrl) {
+              body = `🤖 実装が完了しました！\n\nPRを作成しました: ${prUrl}`;
+            } else {
+              body = `🤖 Issueを確認しましたが、コード変更が見つかりませんでした。\n\n内容をより具体的に記載するか、[ログ](${runUrl}) を確認してください。`;
+            }
+
+            if (concerns) {
+              body += `\n\n---\n## 💬 懸念点・確認事項\n\n${concerns}`;
+            }
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

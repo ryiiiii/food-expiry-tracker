@@ -60,6 +60,7 @@ export default function ShoppingList() {
       if (!res.ok) return;
       setInputName("");
       await fetchItems();
+      fetchSuggestions();
     } finally {
       setAdding(false);
     }
@@ -67,9 +68,9 @@ export default function ShoppingList() {
 
   // 提案チップからワンタップ追加
   const addFromSuggestion = async (name: string) => {
-    await addItem(name);
-    // 追加済みなら提案から除外（楽観的 UI）
+    // 楽観的 UI: 先に提案から除外してからAPIを呼ぶ
     setSuggestions((prev) => prev.filter((s) => s !== name));
+    await addItem(name);
   };
 
   // チェック状態トグル

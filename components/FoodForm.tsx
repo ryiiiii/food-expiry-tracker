@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react";
 
-export type FoodCategory = "生鮮" | "飲料" | "調味料" | "加工・保存食" | "お菓子・パン";
+export type FoodCategory = "生鮮" | "調味料" | "保存食";
 
 export const FOOD_CATEGORIES: { value: FoodCategory; emoji: string; label: string }[] = [
-  { value: "生鮮",       emoji: "🥩", label: "生鮮" },
-  { value: "飲料",       emoji: "🥤", label: "飲料" },
-  { value: "調味料",     emoji: "🧂", label: "調味料" },
-  { value: "加工・保存食", emoji: "🥫", label: "加工・保存食" },
-  { value: "お菓子・パン", emoji: "🍪", label: "お菓子・パン" },
+  { value: "生鮮",   emoji: "🥩", label: "生鮮" },
+  { value: "調味料", emoji: "🧂", label: "調味料" },
+  { value: "保存食", emoji: "🥫", label: "保存食" },
 ];
 
 export type FoodFormData = {

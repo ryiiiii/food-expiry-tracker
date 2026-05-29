@@ -26,7 +26,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # ── 3. 作業ブランチ作成 ──────────────────────────────────────
       - name: Create feature branch

@@ -153,7 +153,8 @@ jobs:
 
             let body;
             if (!exitCode || exitCode !== '0') {
-              body = `⚠️ 自動実装中にエラーが発生しました。\n\n[ワークフローログ](${runUrl}) を確認してください。`;
+              const snippet = output.slice(0, 1000).trim();
+              body = `⚠️ 自動実装中にエラーが発生しました（exit code: ${exitCode}）。\n\n[ワークフローログ](${runUrl})\n\n<details><summary>Claude 出力（先頭1000字）</summary>\n\n\`\`\`\n${snippet || '（出力なし）'}\n\`\`\`\n</details>`;
             } else if (hasChanges === 'true' && prUrl) {
               body = `🤖 実装が完了しました！\n\nPRを作成しました: ${prUrl}`;
             } else {

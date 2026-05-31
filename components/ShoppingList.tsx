@@ -131,7 +131,7 @@ export default function ShoppingList() {
       )}
 
       {/* 手動入力欄 */}
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2">
         <input
           ref={inputRef}
           type="text"
@@ -141,12 +141,12 @@ export default function ShoppingList() {
             if (e.key === "Enter") addItem(inputName);
           }}
           placeholder="食品名を入力して追加"
-          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
         />
         <button
           onClick={() => addItem(inputName)}
           disabled={!inputName.trim() || adding}
-          className="px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          className="w-full px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           追加
         </button>

@@ -143,8 +143,13 @@ export default function FoodList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <span className="text-5xl">🥬</span>
+          <h1 className="text-2xl font-bold loading-shimmer-text">
+            ストックまどの食品管理
+          </h1>
+        </div>
       </div>
     );
   }

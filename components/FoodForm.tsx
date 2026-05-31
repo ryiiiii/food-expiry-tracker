@@ -31,11 +31,17 @@ type Props = {
   nameSuggestions?: string[]; // 登録済み食品名の候補
 };
 
+function defaultExpiryDate(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 5);
+  return date.toISOString().split("T")[0];
+}
+
 export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting, nameSuggestions = [] }: Props) {
   const [form, setForm] = useState<FoodFormData>({
     name: "",
     expiryType: "消費期限",
-    expiryDate: "",
+    expiryDate: defaultExpiryDate(),
     quantity: "",
     unit: "",
     frozen: false,

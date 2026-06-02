@@ -17,6 +17,7 @@ export type ExpenseFormData = {
   amount: string;
   category: ExpenseCategory;
   description: string;
+  memo: string;
   isFixed: boolean;
   payer: Payer;
   date: string;
@@ -38,6 +39,7 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, isSubmitt
     amount: "",
     category: "食品・日用品",
     description: "",
+    memo: "",
     isFixed: false,
     payer: "まどか",
     date: todayString(),
@@ -49,6 +51,7 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, isSubmitt
         amount: initialData.amount,
         category: initialData.category,
         description: initialData.description ?? "",
+        memo: initialData.memo ?? "",
         isFixed: initialData.isFixed,
         payer: initialData.payer,
         date: initialData.date,
@@ -183,6 +186,20 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, isSubmitt
           required
           value={form.date}
           onChange={(e) => setForm({ ...form, date: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
+
+      {/* メモ */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          メモ
+        </label>
+        <input
+          type="text"
+          value={form.memo}
+          onChange={(e) => setForm({ ...form, memo: e.target.value })}
+          placeholder="任意のメモを入力"
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>

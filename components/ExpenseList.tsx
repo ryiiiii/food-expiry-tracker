@@ -13,6 +13,7 @@ type Expense = {
   amount: number;
   category: string;
   description: string | null;
+  memo: string | null;
   isFixed: boolean;
   payer: string;
   date: string;
@@ -273,12 +274,17 @@ export default function ExpenseList() {
               month: "numeric",
               day: "numeric",
             });
+            const ratio = BURDEN_RATIOS[expense.category] ?? { madoka: 0.5, ryo: 0.5 };
+            const madokaAmt = Math.round(expense.amount * ratio.madoka);
+            const ryoAmt = Math.round(expense.amount * ratio.ryo);
+            const madokaPct = Math.round(ratio.madoka * 100);
+            const ryoPct = Math.round(ratio.ryo * 100);
             return (
               <div
                 key={expense.id}
-                className="bg-white border border-gray-200 rounded-xl p-3 flex items-center gap-3"
+                className="bg-white border border-gray-200 rounded-xl p-3 flex items-start gap-3"
               >
-                <span className="text-xl shrink-0">{emoji}</span>
+                <span className="text-xl shrink-0 mt-0.5">{emoji}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-medium text-gray-800 text-sm truncate">
@@ -304,28 +310,38 @@ export default function ExpenseList() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">{dateStr}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    まどか: ¥{madokaAmt.toLocaleString("ja-JP")}（{madokaPct}%）
+                    <span className="mx-1 text-gray-300">|</span>
+                    りょう: ¥{ryoAmt.toLocaleString("ja-JP")}（{ryoPct}%）
+                  </p>
+                  {expense.memo && (
+                    <p className="text-xs text-gray-400 mt-0.5 truncate">📝 {expense.memo}</p>
+                  )}
                 </div>
-                <p className="font-bold text-gray-800 shrink-0">
-                  ¥{expense.amount.toLocaleString("ja-JP")}
-                </p>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => {
-                      setEditingExpense(expense);
-                      setModalMode("edit");
-                    }}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                    aria-label="編集"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    aria-label="削除"
-                  >
-                    🗑️
-                  </button>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <p className="font-bold text-gray-800">
+                    ¥{expense.amount.toLocaleString("ja-JP")}
+                  </p>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingExpense(expense);
+                        setModalMode("edit");
+                      }}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                      aria-label="編集"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleDelete(expense.id)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      aria-label="削除"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -356,6 +372,7 @@ export default function ExpenseList() {
                       amount: String(editingExpense.amount),
                       category: editingExpense.category as ExpenseCategory,
                       description: editingExpense.description ?? "",
+                      memo: editingExpense.memo ?? "",
                       payer: editingExpense.payer as Payer,
                       date: new Date(editingExpense.date)
                         .toISOString()

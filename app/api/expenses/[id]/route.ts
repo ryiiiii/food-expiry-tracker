@@ -13,7 +13,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { amount, category, description, isFixed, payer, date } = body;
+    const { amount, category, description, memo, isFixed, payer, date } = body;
 
     if (!amount || !category || !payer || !date) {
       return NextResponse.json(
@@ -34,6 +34,7 @@ export async function PUT(
         amount: parseInt(amount, 10),
         category,
         description: description || null,
+        memo: memo || null,
         isFixed: isFixed ?? false,
         payer,
         date: new Date(date),

@@ -9,7 +9,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "ストックまどの食品管理",
+  title: "ストックまどの家庭あれこれ",
   description: "食品の消費期限・賞味期限を管理するアプリ",
 };
 
@@ -27,7 +27,7 @@ export default function RootLayout({
             <div className="flex items-center gap-3">
               <span className="text-2xl">🥬</span>
               <div>
-                <h1 className="text-xl font-bold text-gray-800">ストックまどの食品管理</h1>
+                <h1 className="text-xl font-bold text-gray-800">ストックまどの家庭あれこれ</h1>
                 <p className="text-xs text-gray-500">消費期限・賞味期限切れにさせないわ👧</p>
               </div>
             </div>
@@ -42,7 +42,7 @@ export default function RootLayout({
 
         {/* フッター */}
         <footer className="text-center text-xs text-gray-400 py-6">
-          <p>ストックまどの食品管理</p>
+          <p>ストックまどの家庭あれこれ</p>
         </footer>
       </body>
     </html>

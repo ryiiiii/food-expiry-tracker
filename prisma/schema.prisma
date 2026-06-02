@@ -48,6 +48,7 @@ model Expense {
   amount      Int      // 金額（円）
   category    String   // "食品・日用品" | "外食" | "光熱費" | "家賃" | "その他"
   description String?  // その他の場合の詳細
+  memo        String?  // メモ（任意）
   isFixed     Boolean  @default(false) // false=変動, true=固定
   payer       String   // "まどか" | "りょう"
   date        DateTime // 支払日

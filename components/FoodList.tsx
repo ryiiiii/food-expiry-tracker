@@ -147,7 +147,7 @@ export default function FoodList() {
         <div className="flex flex-col items-center gap-4">
           <span className="text-5xl">🥬</span>
           <h1 className="text-2xl font-bold loading-shimmer-text">
-            ストックまどの食品管理
+            ストックまどの家庭あれこれ
           </h1>
         </div>
       </div>

@@ -42,6 +42,7 @@ export default function ExpenseList() {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(true);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -203,86 +204,98 @@ export default function ExpenseList() {
 
       {/* 集計サマリー */}
       {expenses.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4 space-y-3">
-          <h3 className="text-sm font-bold text-gray-700">📊 {month}月の集計</h3>
+        <div className="bg-white border border-gray-200 rounded-xl mb-4">
+          <button
+            onClick={() => setSummaryOpen((o) => !o)}
+            className="w-full flex items-center justify-between p-4 text-left"
+          >
+            <h3 className="text-sm font-bold text-gray-700">📊 {month}月の集計</h3>
+            <span className="text-xs text-gray-400 transition-transform duration-200" style={{ display: "inline-block", transform: summaryOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+              ▼
+            </span>
+          </button>
 
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500 font-medium">
-              合計支払い: ¥{total.toLocaleString("ja-JP")}
-            </p>
-            <div className="flex gap-6">
-              <div>
-                <span className="text-xs text-gray-500">まどか</span>
-                <p className="text-sm font-bold text-gray-800">
-                  ¥{madokaPaid.toLocaleString("ja-JP")}
+          {summaryOpen && (
+            <div className="px-4 pb-4 space-y-3">
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500 font-medium">
+                  合計支払い: ¥{total.toLocaleString("ja-JP")}
                 </p>
-              </div>
-              <div>
-                <span className="text-xs text-gray-500">りょう</span>
-                <p className="text-sm font-bold text-gray-800">
-                  ¥{ryoPaid.toLocaleString("ja-JP")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-xs text-gray-500 font-medium">負担金額（割合計算）</p>
-            <div className="flex gap-6">
-              <div>
-                <span className="text-xs text-gray-500">まどか</span>
-                <p className="text-sm font-bold text-gray-800">
-                  ¥{madokaBurden.toLocaleString("ja-JP")}
-                </p>
-              </div>
-              <div>
-                <span className="text-xs text-gray-500">りょう</span>
-                <p className="text-sm font-bold text-gray-800">
-                  ¥{ryoBurden.toLocaleString("ja-JP")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {categoryBreakdown.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-gray-500 font-medium">支払項目別 内訳</p>
-              {categoryBreakdown.map((item) => (
-                <div key={item.label} className="bg-gray-50 rounded-lg px-3 py-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-700">
-                      {item.emoji} {item.label}
-                    </span>
-                    <span className="text-xs font-bold text-gray-800">
-                      ¥{item.total.toLocaleString("ja-JP")}
-                    </span>
+                <div className="flex gap-6">
+                  <div>
+                    <span className="text-xs text-gray-500">まどか</span>
+                    <p className="text-sm font-bold text-gray-800">
+                      ¥{madokaPaid.toLocaleString("ja-JP")}
+                    </p>
                   </div>
-                  <div className="flex gap-4 mt-0.5">
-                    <span className="text-xs text-gray-500">
-                      まどか ¥{item.madokaAmt.toLocaleString("ja-JP")}（{item.madokaPct}%）
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      りょう ¥{item.ryoAmt.toLocaleString("ja-JP")}（{item.ryoPct}%）
-                    </span>
+                  <div>
+                    <span className="text-xs text-gray-500">りょう</span>
+                    <p className="text-sm font-bold text-gray-800">
+                      ¥{ryoPaid.toLocaleString("ja-JP")}
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500 font-medium">負担金額（割合計算）</p>
+                <div className="flex gap-6">
+                  <div>
+                    <span className="text-xs text-gray-500">まどか</span>
+                    <p className="text-sm font-bold text-gray-800">
+                      ¥{madokaBurden.toLocaleString("ja-JP")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500">りょう</span>
+                    <p className="text-sm font-bold text-gray-800">
+                      ¥{ryoBurden.toLocaleString("ja-JP")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {categoryBreakdown.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-gray-500 font-medium">支払項目別 内訳</p>
+                  {categoryBreakdown.map((item) => (
+                    <div key={item.label} className="bg-gray-50 rounded-lg px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-gray-700">
+                          {item.emoji} {item.label}
+                        </span>
+                        <span className="text-xs font-bold text-gray-800">
+                          ¥{item.total.toLocaleString("ja-JP")}
+                        </span>
+                      </div>
+                      <div className="flex gap-4 mt-0.5">
+                        <span className="text-xs text-gray-500">
+                          まどか ¥{item.madokaAmt.toLocaleString("ja-JP")}（{item.madokaPct}%）
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          りょう ¥{item.ryoAmt.toLocaleString("ja-JP")}（{item.ryoPct}%）
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-gray-100">
+                {settlement === 0 ? (
+                  <p className="text-sm font-medium text-green-600">✅ 精算済み（差額なし）</p>
+                ) : settlement > 0 ? (
+                  <p className="text-sm font-medium text-blue-600">
+                    💸 りょうはまどかに {fmtAmt(settlement)} 支払う
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium text-orange-600">
+                    💸 まどかはりょうに {fmtAmt(settlement)} 支払う
+                  </p>
+                )}
+              </div>
             </div>
           )}
-
-          <div className="pt-2 border-t border-gray-100">
-            {settlement === 0 ? (
-              <p className="text-sm font-medium text-green-600">✅ 精算済み（差額なし）</p>
-            ) : settlement > 0 ? (
-              <p className="text-sm font-medium text-blue-600">
-                💸 りょうはまどかに {fmtAmt(settlement)} 支払う
-              </p>
-            ) : (
-              <p className="text-sm font-medium text-orange-600">
-                💸 まどかはりょうに {fmtAmt(settlement)} 支払う
-              </p>
-            )}
-          </div>
         </div>
       )}
 

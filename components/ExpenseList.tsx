@@ -330,11 +330,6 @@ export default function ExpenseList() {
               month: "numeric",
               day: "numeric",
             });
-            const ratio = BURDEN_RATIOS[expense.category] ?? { madoka: 0.5, ryo: 0.5 };
-            const madokaAmt = Math.round(expense.amount * ratio.madoka);
-            const ryoAmt = Math.round(expense.amount * ratio.ryo);
-            const madokaPct = Math.round(ratio.madoka * 100);
-            const ryoPct = Math.round(ratio.ryo * 100);
             return (
               <div
                 key={expense.id}
@@ -366,11 +361,6 @@ export default function ExpenseList() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 mt-0.5">{dateStr}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    まどか: ¥{madokaAmt.toLocaleString("ja-JP")}（{madokaPct}%）
-                    <span className="mx-1 text-gray-300">|</span>
-                    りょう: ¥{ryoAmt.toLocaleString("ja-JP")}（{ryoPct}%）
-                  </p>
                   {expense.memo && (
                     <p className="text-xs text-gray-400 mt-0.5 truncate">📝 {expense.memo}</p>
                   )}

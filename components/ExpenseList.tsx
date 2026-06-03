@@ -136,6 +136,23 @@ export default function ExpenseList() {
     ryoBurden += Math.round(e.amount * ratio.ryo);
   }
 
+  // カテゴリ別内訳（支出がある項目のみ）
+  const categoryBreakdown = EXPENSE_CATEGORIES.map((cat) => {
+    const catExpenses = expenses.filter((e) => e.category === cat.value);
+    if (catExpenses.length === 0) return null;
+    const catTotal = catExpenses.reduce((s, e) => s + e.amount, 0);
+    const ratio = BURDEN_RATIOS[cat.value] ?? { madoka: 0.5, ryo: 0.5 };
+    return {
+      label: cat.value,
+      emoji: cat.emoji,
+      total: catTotal,
+      madokaAmt: Math.round(catTotal * ratio.madoka),
+      ryoAmt: Math.round(catTotal * ratio.ryo),
+      madokaPct: Math.round(ratio.madoka * 100),
+      ryoPct: Math.round(ratio.ryo * 100),
+    };
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
+
   // 正: まどかが多く払いすぎ → りょうはまどかに支払う
   // 負: まどかが少ない → まどかはりょうに支払う
   const settlement = madokaPaid - madokaBurden;
@@ -226,6 +243,32 @@ export default function ExpenseList() {
               </div>
             </div>
           </div>
+
+          {categoryBreakdown.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-gray-500 font-medium">支払項目別 内訳</p>
+              {categoryBreakdown.map((item) => (
+                <div key={item.label} className="bg-gray-50 rounded-lg px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-700">
+                      {item.emoji} {item.label}
+                    </span>
+                    <span className="text-xs font-bold text-gray-800">
+                      ¥{item.total.toLocaleString("ja-JP")}
+                    </span>
+                  </div>
+                  <div className="flex gap-4 mt-0.5">
+                    <span className="text-xs text-gray-500">
+                      まどか ¥{item.madokaAmt.toLocaleString("ja-JP")}（{item.madokaPct}%）
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      りょう ¥{item.ryoAmt.toLocaleString("ja-JP")}（{item.ryoPct}%）
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="pt-2 border-t border-gray-100">
             {settlement === 0 ? (

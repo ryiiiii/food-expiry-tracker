@@ -42,7 +42,7 @@ export default function ExpenseList() {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [summaryOpen, setSummaryOpen] = useState(true);
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);

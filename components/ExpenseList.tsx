@@ -23,12 +23,15 @@ type Expense = {
 
 // 負担割合: まどか / りょう
 const BURDEN_RATIOS: Record<string, { madoka: number; ryo: number }> = {
-  "食品・日用品": { madoka: 0.4, ryo: 0.6 },
-  "外食":         { madoka: 0.4, ryo: 0.6 },
-  "光熱費":       { madoka: 0.5, ryo: 0.5 },
-  "家賃":         { madoka: 0.3, ryo: 0.7 },
-  "その他":       { madoka: 0.5, ryo: 0.5 },
+  "食品・日用品":       { madoka: 0.4, ryo: 0.6 },
+  "外食":               { madoka: 0.4, ryo: 0.6 },
+  "光熱費":             { madoka: 0.5, ryo: 0.5 },
+  "家賃":               { madoka: 0.3, ryo: 0.7 },
+  "結婚式・旅行代の返済": { madoka: 0.0, ryo: 1.0 },
+  "その他":             { madoka: 0.5, ryo: 0.5 },
 };
+
+const REPAYMENT_CATEGORY = "結婚式・旅行代の返済";
 
 type ModalMode = "add" | "edit" | null;
 
@@ -43,6 +46,14 @@ export default function ExpenseList() {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [repaymentTotal, setRepaymentTotal] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/expenses/repayment")
+      .then((r) => r.json())
+      .then((d) => setRepaymentTotal(d.total ?? 0))
+      .catch(() => setRepaymentTotal(null));
+  }, []);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -183,6 +194,17 @@ export default function ExpenseList() {
 
   return (
     <div>
+      {/* 返済累計カード */}
+      {repaymentTotal !== null && (
+        <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 mb-4">
+          <p className="text-xs text-pink-500 font-medium mb-1">💍 {REPAYMENT_CATEGORY} — 返済累計</p>
+          <p className="text-xl font-bold text-pink-700">
+            ¥{repaymentTotal.toLocaleString("ja-JP")}
+          </p>
+          <p className="text-xs text-pink-400 mt-0.5">りょうが全額負担</p>
+        </div>
+      )}
+
       {/* 月選択 */}
       <div className="flex items-center justify-between mb-4">
         <button

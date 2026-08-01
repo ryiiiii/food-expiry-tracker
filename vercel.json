@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/notify",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-expenses",
+      "schedule": "0 1 1 * *"
     }
   ]
 }

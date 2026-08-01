@@ -46,12 +46,27 @@ model Food {
 model Expense {
   id          Int      @id @default(autoincrement())
   amount      Int      // 金額（円）
-  category    String   // "食品・日用品" | "外食" | "光熱費" | "家賃" | "その他"
+  category    String   // "食品・日用品" | "外食" | "光熱費" | "家賃" | "その他" | "結婚式・旅行代の返済"
   description String?  // その他の場合の詳細
   memo        String?  // メモ（任意）
   isFixed     Boolean  @default(false) // false=変動, true=固定
   payer       String   // "まどか" | "りょう"
   date        DateTime // 支払日
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 毎月自動挿入する固定費の定義
+model RecurringExpense {
+  id          Int      @id @default(autoincrement())
+  amount      Int
+  category    String
+  description String?
+  memo        String?
+  payer       String
+  startYear   Int      // 開始年（例: 2026）
+  startMonth  Int      // 開始月（例: 7）
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

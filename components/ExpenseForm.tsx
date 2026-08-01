@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from "react";
 
-export type ExpenseCategory = "食品・日用品" | "外食" | "光熱費" | "家賃" | "その他";
+export type ExpenseCategory = "食品・日用品" | "外食" | "光熱費" | "家賃" | "結婚式・旅行代の返済" | "その他";
 export type Payer = "まどか" | "りょう";
 
 export const EXPENSE_CATEGORIES: { value: ExpenseCategory; emoji: string }[] = [
-  { value: "食品・日用品", emoji: "🛒" },
-  { value: "外食",         emoji: "🍽️" },
-  { value: "光熱費",       emoji: "💡" },
-  { value: "家賃",         emoji: "🏠" },
-  { value: "その他",       emoji: "📝" },
+  { value: "食品・日用品",       emoji: "🛒" },
+  { value: "外食",               emoji: "🍽️" },
+  { value: "光熱費",             emoji: "💡" },
+  { value: "家賃",               emoji: "🏠" },
+  { value: "結婚式・旅行代の返済", emoji: "💍" },
+  { value: "その他",             emoji: "📝" },
 ];
 
 export type ExpenseFormData = {

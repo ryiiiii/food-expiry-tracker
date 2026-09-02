@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Image from "next/image";
 import ExpenseForm, {
   type ExpenseFormData,
   type ExpenseCategory,
@@ -172,8 +173,20 @@ export default function ExpenseList() {
 
   if (loading && expenses.length === 0) {
     return (
-      <div className="flex items-center justify-center py-16 text-gray-400">
-        読み込み中...
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <Image
+            src="/house_ending_bw.gif"
+            alt="読み込み中"
+            width={160}
+            height={160}
+            unoptimized
+            priority
+          />
+          <h1 className="text-2xl font-bold loading-shimmer-text">
+            ストックまどの家庭あれこれ
+          </h1>
+        </div>
       </div>
     );
   }

@@ -9,10 +9,11 @@ export default function LoadingScreen() {
       <Image
         src="/house_ending_bw.gif"
         alt="読み込み中"
-        width={160}
-        height={160}
+        width={220}
+        height={80}
         unoptimized
         priority
+        className="h-20 w-[220px] object-contain"
       />
       <div className="flex flex-col items-center gap-2.5">
         <p className="text-xl font-bold tracking-[0.02em] loading-shimmer-text">

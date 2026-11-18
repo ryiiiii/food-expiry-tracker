@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import LoadingScreen from "@/components/ui/LoadingScreen";
+import Icon from "@/components/ui/Icon";
 
 type ShoppingItem = {
   id: number;
@@ -107,100 +108,99 @@ export default function ShoppingList() {
   }
 
   return (
-    <div className="space-y-5">
+    <>
+      {/* 手動入力欄 */}
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          addItem(inputName);
+        }}
+      >
+        <label className="flex h-11 flex-1 items-center rounded-[10px] border border-line bg-surface px-3 focus-within:ring-2 focus-within:ring-accent">
+          <span className="sr-only">品目を追加</span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputName}
+            onChange={(e) => setInputName(e.target.value)}
+            placeholder="品目を入力"
+            className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={!inputName.trim() || adding}
+          className="h-11 rounded-[10px] bg-accent px-[18px] text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          追加
+        </button>
+      </form>
+
       {/* 消費済みから提案 */}
       {suggestions.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">💡 消費済みから提案</p>
+        <section className="flex flex-col gap-2">
+          <h2 className="text-xs font-medium text-muted">消費した食品からの提案</h2>
           <div className="flex flex-wrap gap-2">
             {suggestions.map((name) => (
               <button
                 key={name}
+                type="button"
                 onClick={() => addFromSuggestion(name)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border border-dashed border-green-400 text-green-700 bg-green-50 hover:bg-green-100 transition-colors"
+                className="flex h-9 items-center gap-1 rounded-full border border-dashed border-[#b9bcb5] bg-surface pr-3 pl-2.5 text-[13px] text-ink"
               >
-                <span className="text-base leading-none">＋</span>
-                <span>{name}</span>
+                <Icon name="plus" size={16} />
+                {name}
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
-
-      {/* 手動入力欄 */}
-      <div className="flex flex-col gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputName}
-          onChange={(e) => setInputName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addItem(inputName);
-          }}
-          placeholder="食品名を入力して追加"
-          className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        />
-        <button
-          onClick={() => addItem(inputName)}
-          disabled={!inputName.trim() || adding}
-          className="w-full px-4 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          追加
-        </button>
-      </div>
 
       {/* リスト */}
       {items.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">🛒</p>
-          <p className="text-lg font-medium text-gray-500">買い物リストは空です</p>
-          <p className="text-sm mt-1">上の提案から追加するか、直接入力してみましょう</p>
+        <div className="rounded-xl border border-line bg-surface px-4 py-10 text-center">
+          <p className="text-sm font-medium text-muted">買い物リストは空です</p>
+          <p className="mt-1 text-xs text-muted">上の提案から追加するか、直接入力してみましょう</p>
         </div>
       ) : (
-        <div className="space-y-1">
-          {/* 未チェック */}
-          {uncheckedItems.map((item) => (
-            <ShoppingItemRow
-              key={item.id}
-              item={item}
-              onToggle={toggleItem}
-              onDelete={deleteItem}
-            />
-          ))}
-
-          {/* チェック済み区切り */}
-          {checkedItems.length > 0 && (
-            <>
-              <div className="flex items-center gap-2 pt-3 pb-1">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400 whitespace-nowrap">
-                  購入済み {checkedCount}件
-                </span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-              {checkedItems.map((item) => (
-                <ShoppingItemRow
-                  key={item.id}
-                  item={item}
-                  onToggle={toggleItem}
-                  onDelete={deleteItem}
-                />
-              ))}
-              <button
-                onClick={clearChecked}
-                className="w-full mt-3 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                🗑️ 購入済みをすべて削除
-              </button>
-            </>
+        <>
+          {uncheckedItems.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-xs font-medium text-muted">買うもの · {uncheckedItems.length}件</h2>
+              <ul className="rounded-xl border border-line bg-surface">
+                {uncheckedItems.map((item) => (
+                  <ShoppingItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                ))}
+              </ul>
+            </section>
           )}
-        </div>
+
+          {checkedItems.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="text-xs font-medium text-muted">購入済み · {checkedCount}件</h2>
+              <ul className="rounded-xl border border-line bg-surface">
+                {checkedItems.map((item) => (
+                  <ShoppingItemRow key={item.id} item={item} onToggle={toggleItem} onDelete={deleteItem} />
+                ))}
+              </ul>
+              <button
+                type="button"
+                onClick={clearChecked}
+                className="flex h-11 items-center justify-center gap-1.5 text-sm font-medium text-danger"
+              >
+                <Icon name="trash" size={16} />
+                購入済みをすべて削除
+              </button>
+            </section>
+          )}
+        </>
       )}
-    </div>
+    </>
   );
 }
 
-// 個別アイテム行
+// ─── 個別アイテム行 ───────────────────────────────────────────────
 function ShoppingItemRow({
   item,
   onToggle,
@@ -210,52 +210,38 @@ function ShoppingItemRow({
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
+  const quantityLabel =
+    item.quantity != null && item.unit ? `${item.quantity}${item.unit}`
+    : item.quantity != null            ? `${item.quantity}`
+    : item.unit                        ? item.unit
+    : null;
+
   return (
-    <div
-      className={`flex items-center gap-3 px-3 py-3 rounded-xl border transition-all ${
-        item.checked
-          ? "bg-gray-50 border-gray-100 opacity-60"
-          : "bg-white border-gray-200"
-      }`}
-    >
-      {/* チェックボックス */}
-      <button
-        onClick={() => onToggle(item.id)}
-        className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-          item.checked
-            ? "bg-green-500 border-green-500"
-            : "border-gray-300 hover:border-green-400"
+    <li className="flex items-center border-b border-divider last:border-b-0">
+      <label
+        className={`flex min-h-[52px] flex-1 cursor-pointer items-center gap-3 pl-3.5 text-[15px] ${
+          item.checked ? "text-muted line-through" : ""
         }`}
       >
-        {item.checked && (
-          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        )}
-      </button>
-
-      {/* 名前 */}
-      <span
-        className={`flex-1 text-sm font-medium ${
-          item.checked ? "line-through text-gray-400" : "text-gray-800"
-        }`}
-      >
-        {item.name}
-        {item.quantity != null && (
-          <span className="ml-1.5 text-xs text-gray-400 font-normal">
-            {item.quantity}{item.unit ?? ""}
-          </span>
-        )}
-      </span>
-
-      {/* 削除ボタン */}
+        <input
+          type="checkbox"
+          checked={item.checked}
+          onChange={() => onToggle(item.id)}
+          className="m-0 size-5 shrink-0 accent-accent"
+        />
+        <span className="min-w-0 truncate">
+          {item.name}
+          {quantityLabel && <span className="ml-1.5 text-xs text-muted">{quantityLabel}</span>}
+        </span>
+      </label>
       <button
+        type="button"
         onClick={() => onDelete(item.id)}
-        className="shrink-0 p-1 text-gray-300 hover:text-red-500 transition-colors"
-        title="削除"
+        aria-label={`${item.name}を削除`}
+        className="flex size-11 shrink-0 items-center justify-center text-muted"
       >
-        ✕
+        <Icon name="x" size={18} />
       </button>
-    </div>
+    </li>
   );
 }

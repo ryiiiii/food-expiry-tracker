@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Image from "next/image";
+import LoadingScreen from "@/components/ui/LoadingScreen";
 import FoodItem, { type Food } from "./FoodItem";
 import FoodForm, { type FoodFormData, FOOD_CATEGORIES, type FoodCategory } from "./FoodForm";
 
@@ -143,23 +143,7 @@ export default function FoodList() {
   const frozenCount  = foods.filter((food) => food.frozen).length;
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <Image
-            src="/house_ending_bw.gif"
-            alt="読み込み中"
-            width={160}
-            height={160}
-            unoptimized
-            priority
-          />
-          <h1 className="text-2xl font-bold loading-shimmer-text">
-            ストックまどの家庭あれこれ
-          </h1>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error) {

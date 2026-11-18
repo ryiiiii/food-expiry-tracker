@@ -1,12 +1,10 @@
 import ExpenseList from "@/components/ExpenseList";
+import PageHeading from "@/components/ui/PageHeading";
 
 export default function AccountingPage() {
   return (
-    <main className="max-w-2xl mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">💰 家計管理</h1>
-        <p className="text-sm text-gray-500 mt-1">支出を記録・集計する</p>
-      </div>
+    <main className="flex flex-col gap-4 px-5 pt-2 pb-6">
+      <PageHeading title="家計管理" subtitle="支出を記録・集計する" />
       <ExpenseList />
     </main>
   );

@@ -1,8 +1,13 @@
 import FoodList from "@/components/FoodList";
+import PageHeading from "@/components/ui/PageHeading";
 
 export default function Home() {
   return (
-    <main className="max-w-2xl mx-auto px-4 py-6">
+    <main className="flex flex-col gap-4 px-5 pt-2">
+      <PageHeading
+        title="食品管理"
+        subtitle="消費期限・賞味期限切れにさせないわ"
+      />
       <FoodList />
     </main>
   );

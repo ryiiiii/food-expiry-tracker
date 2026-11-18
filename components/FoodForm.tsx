@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { addDays, toLocalDateString } from "@/lib/date";
+import { parseVoiceFood, endsWithSubmitCommand } from "@/lib/parseVoiceFood";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 
 export type FoodCategory = "生鮮" | "調味料" | "保存食";
 
@@ -32,9 +35,7 @@ type Props = {
 };
 
 function defaultExpiryDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 5);
-  return date.toISOString().split("T")[0];
+  return toLocalDateString(addDays(new Date(), 5));
 }
 
 export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting, nameSuggestions = [] }: Props) {
@@ -64,6 +65,25 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
     }
   }, [initialData]);
 
+  const [heard, setHeard] = useState("");
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const { supported, listening, interim, error: voiceError, start, stop } = useSpeechRecognition(
+    (transcript) => {
+      setHeard(transcript);
+      setVoiceNotice(null);
+      const { submit, ...parsed } = parseVoiceFood(transcript);
+      const merged = { ...form, ...parsed };
+      setForm(merged);
+      if (!submit) return;
+      // 「追加して」で送信。必須項目が足りなければ送信せず知らせる
+      if (isSubmitting) return;
+      if (!merged.name.trim()) return setVoiceNotice("食品名が入力されていないため追加できません");
+      if (!merged.frozen && !merged.expiryDate) return setVoiceNotice("期限日が入力されていないため追加できません");
+      void onSubmit(merged);
+    },
+    endsWithSubmitCommand
+  );
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await onSubmit(form);
@@ -71,6 +91,31 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {/* 音声入力 */}
+      {supported && (
+        <div>
+          <button
+            type="button"
+            onClick={listening ? stop : start}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+              listening
+                ? "bg-red-50 border-red-300 text-red-600 animate-pulse"
+                : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            🎤 {listening ? "聞いています…（話し終えたらタップ）" : "音声で入力（例：牛乳 期限 明後日 数量 2個 追加して）"}
+          </button>
+          {listening && interim && (
+            <p className="mt-1 text-xs text-gray-500">「{interim}」</p>
+          )}
+          {heard && !listening && (
+            <p className="mt-1 text-xs text-gray-500">認識結果：「{heard}」</p>
+          )}
+          {voiceNotice && <p className="mt-1 text-xs text-red-500">{voiceNotice}</p>}
+          {voiceError && <p className="mt-1 text-xs text-red-500">{voiceError}</p>}
+        </div>
+      )}
+
       {/* 食品名 */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">

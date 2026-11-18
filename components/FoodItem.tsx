@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { FOOD_CATEGORIES } from "./FoodForm";
 
 export type Food = {
@@ -21,7 +20,6 @@ export type Food = {
 type Props = {
   food: Food;
   onEdit: (food: Food) => void;
-  onDelete: (id: number) => Promise<void>;
 };
 
 function getDaysUntilExpiry(expiryDate: string): number {
@@ -32,120 +30,70 @@ function getDaysUntilExpiry(expiryDate: string): number {
   return Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function getStatusStyle(daysLeft: number): { bg: string; badge: string; label: string } {
-  if (daysLeft < 0)  return { bg: "bg-gray-50 border-gray-200 opacity-60",  badge: "bg-gray-500 text-white",  label: `${Math.abs(daysLeft)}日前に期限切れ` };
-  if (daysLeft === 0) return { bg: "bg-red-50 border-red-300",              badge: "bg-red-600 text-white",   label: "今日が期限！" };
-  if (daysLeft === 1) return { bg: "bg-orange-50 border-orange-300",        badge: "bg-orange-500 text-white", label: "明日が期限" };
-  if (daysLeft <= 3)  return { bg: "bg-yellow-50 border-yellow-300",        badge: "bg-yellow-500 text-white", label: `あと${daysLeft}日` };
-  if (daysLeft <= 7)  return { bg: "bg-blue-50 border-blue-200",            badge: "bg-blue-500 text-white",   label: `あと${daysLeft}日` };
-  return              { bg: "bg-white border-gray-200",                     badge: "bg-green-500 text-white",  label: `あと${daysLeft}日` };
+function getBadge(daysLeft: number): { className: string; label: string } {
+  if (daysLeft < 0) return { className: "bg-danger-soft text-danger", label: "期限切れ" };
+  if (daysLeft === 0) return { className: "bg-danger-soft text-danger", label: "今日が期限" };
+  if (daysLeft <= 3) return { className: "bg-warn-soft text-warn", label: `あと${daysLeft}日` };
+  return { className: "bg-chip text-chip-ink", label: `あと${daysLeft}日` };
 }
 
-export default function FoodItem({ food, onEdit, onDelete }: Props) {
-  const [deleting, setDeleting] = useState(false);
-
+export default function FoodItem({ food, onEdit }: Props) {
   // 冷凍品は期限バッジ不要
-  const daysLeft = (!food.frozen && food.expiryDate) ? getDaysUntilExpiry(food.expiryDate) : null;
-  const status   = daysLeft !== null ? getStatusStyle(daysLeft) : null;
+  const daysLeft = !food.frozen && food.expiryDate ? getDaysUntilExpiry(food.expiryDate) : null;
+  const badge = daysLeft !== null ? getBadge(daysLeft) : null;
 
-  // カテゴリのラベルを解決
-  const categoryInfo = food.category
-    ? FOOD_CATEGORIES.find((c) => c.value === food.category) ?? null
+  const categoryLabel = food.category
+    ? FOOD_CATEGORIES.find((c) => c.value === food.category)?.label ?? food.category
     : null;
 
-  // カード背景：冷凍品は水色系
-  const cardBg = food.frozen
-    ? "bg-blue-50 border-blue-200"
-    : (status?.bg ?? "bg-white border-gray-200");
-
-  const handleDelete = async () => {
-    if (!confirm(`「${food.name}」を削除しますか？`)) return;
-    setDeleting(true);
-    await onDelete(food.id);
-    setDeleting(false);
-  };
-
-  const formattedDate = food.expiryDate
-    ? new Date(food.expiryDate).toLocaleDateString("ja-JP", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+  const shortDate = food.expiryDate
+    ? (() => {
+        const d = new Date(food.expiryDate);
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+      })()
     : null;
 
   const quantityLabel =
-    food.quantity != null && food.unit ? `${food.quantity} ${food.unit}`
+    food.quantity != null && food.unit ? `${food.quantity}${food.unit}`
     : food.quantity != null            ? `${food.quantity}`
     : food.unit                        ? food.unit
     : null;
 
+  const sub = [
+    food.frozen ? "冷凍" : null,
+    categoryLabel,
+    shortDate ? `${food.expiryType} ${shortDate}` : null,
+    quantityLabel,
+    food.notified ? "通知済" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <div className={`border rounded-xl p-4 transition-all ${cardBg}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-gray-800 truncate">{food.name}</h3>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
-              {food.expiryType}
+    <li className="border-b border-divider last:border-b-0">
+      <button
+        type="button"
+        onClick={() => onEdit(food)}
+        aria-label={`${food.name}を編集`}
+        className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left"
+      >
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate text-[15px] font-medium">{food.name}</span>
+          <span className="truncate text-xs text-muted">{sub}</span>
+          {food.memo && <span className="truncate text-xs text-muted">{food.memo}</span>}
+        </span>
+        {food.frozen ? (
+          <span className="shrink-0 rounded-full bg-chip px-2.5 py-1 text-xs font-medium text-chip-ink">
+            冷凍
+          </span>
+        ) : (
+          badge && (
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${badge.className}`}>
+              {badge.label}
             </span>
-            {/* 冷凍バッジ */}
-            {food.frozen && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white whitespace-nowrap">
-                🧊 冷凍中
-              </span>
-            )}
-            {quantityLabel && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
-                {quantityLabel}
-              </span>
-            )}
-            {categoryInfo && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 whitespace-nowrap">
-                {categoryInfo.emoji} {categoryInfo.label}
-              </span>
-            )}
-            {food.notified && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 whitespace-nowrap">
-                📬 通知済
-              </span>
-            )}
-          </div>
-
-          {/* 期限日：冷凍中は非表示 */}
-          {!food.frozen && formattedDate && (
-            <p className="text-sm text-gray-600 mt-1">{formattedDate}</p>
-          )}
-          {food.memo && (
-            <p className="text-xs text-gray-500 mt-1 truncate">{food.memo}</p>
-          )}
-        </div>
-
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          {/* 残り日数バッジ：冷凍中は非表示 */}
-          {status && (
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${status.badge}`}>
-              {status.label}
-            </span>
-          )}
-          <div className="flex gap-1">
-            <button
-              onClick={() => onEdit(food)}
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-              title="編集"
-            >
-              ✏️
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-              title="削除"
-            >
-              🗑️
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          )
+        )}
+      </button>
+    </li>
   );
 }

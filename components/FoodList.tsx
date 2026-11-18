@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useEffect } from "react";
 import LoadingScreen from "@/components/ui/LoadingScreen";
+import BottomSheet from "@/components/ui/BottomSheet";
+import Icon from "@/components/ui/Icon";
+import ChipToggle from "@/components/ui/ChipToggle";
 import FoodItem, { type Food } from "./FoodItem";
 import FoodForm, { type FoodFormData, FOOD_CATEGORIES, type FoodCategory } from "./FoodForm";
 
@@ -114,33 +117,31 @@ export default function FoodList() {
     return Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   };
 
+  const matchesQuery = (food: Food) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    return food.name.toLowerCase().includes(q) || (food.memo?.toLowerCase().includes(q) ?? false);
+  };
+
+  // ステータス → カテゴリ → キーワードの順に絞り込む（冷凍品は「冷凍」以外では除外）
   const filteredFoods = foods.filter((food) => {
     const d = daysLeft(food);
 
-    // ステータスフィルター
-    if (filter === "frozen")  return food.frozen;
-    if (filter === "urgent")  return d !== null && d >= 0 && d <= 3;
-    if (filter === "expired") return d !== null && d < 0;
-    // "all"（期限あり）: 冷凍品を除外
-    if (food.frozen) return false;
-
-    // カテゴリフィルター
-    if (categoryFilter && food.category !== categoryFilter) return false;
-
-    // キーワード検索（食品名・メモの部分一致）
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
-      const matchName = food.name.toLowerCase().includes(q);
-      const matchMemo = food.memo?.toLowerCase().includes(q) ?? false;
-      if (!matchName && !matchMemo) return false;
+    if (filter === "frozen") {
+      if (!food.frozen) return false;
+    } else {
+      if (food.frozen) return false;
+      if (filter === "urgent" && !(d !== null && d >= 0 && d <= 3)) return false;
+      if (filter === "expired" && !(d !== null && d < 0)) return false;
     }
 
-    return true;
+    if (categoryFilter && food.category !== categoryFilter) return false;
+    return matchesQuery(food);
   });
 
   const urgentCount  = foods.filter((food) => { const d = daysLeft(food); return d !== null && d >= 0 && d <= 3; }).length;
   const expiredCount = foods.filter((food) => { const d = daysLeft(food); return d !== null && d < 0; }).length;
-  const frozenCount  = foods.filter((food) => food.frozen).length;
+  const activeCount  = foods.filter((food) => !food.frozen).length;
 
   if (loading) {
     return <LoadingScreen />;
@@ -148,11 +149,11 @@ export default function FoodList() {
 
   if (error) {
     return (
-      <div className="text-center py-20 text-red-500">
-        <p>⚠️ {error}</p>
+      <div className="py-16 text-center text-danger">
+        <p>{error}</p>
         <button
-          onClick={fetchFoods}
-          className="mt-4 text-sm text-gray-600 underline"
+          onClick={() => { setError(null); setLoading(true); fetchFoods(); }}
+          className="mt-3 text-sm text-muted underline"
         >
           再読み込み
         </button>
@@ -160,186 +161,165 @@ export default function FoodList() {
     );
   }
 
+  const emptyMessage = searchQuery.trim()
+    ? `「${searchQuery.trim()}」に一致する食品はありません`
+    : filter === "expired" ? "期限切れの食品はありません"
+    : filter === "urgent"  ? "3日以内に期限が来る食品はありません"
+    : filter === "frozen"  ? "冷凍中の食品はありません"
+    : categoryFilter       ? `${categoryFilter}の食品はありません`
+    : "食品がまだ登録されていません";
+
+  const tiles: { key: "expired" | "urgent" | "all"; label: string; count: number; color: string }[] = [
+    { key: "expired", label: "期限切れ", count: expiredCount, color: "text-danger" },
+    { key: "urgent",  label: "3日以内", count: urgentCount,  color: "text-warn" },
+    { key: "all",     label: "保管中",   count: activeCount,  color: "text-muted" },
+  ];
+
+  const closeModal = () => {
+    setModalMode(null);
+    setEditingFood(null);
+  };
+
   return (
-    <div>
-      {/* 検索欄 */}
-      <div className="relative mb-4">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="食品名・メモで検索"
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-gray-900 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
-        )}
+    <>
+      {/* 件数タイル（タップで絞り込み） */}
+      <div className="grid grid-cols-3 gap-2">
+        {tiles.map((t) => {
+          const selected = t.key === "all"
+            ? filter !== "expired" && filter !== "urgent"
+            : filter === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => setFilter(t.key === "all" || filter === t.key ? "all" : t.key)}
+              className={`flex flex-col gap-0.5 rounded-xl border bg-surface p-3 text-left ${
+                selected && t.key !== "all" ? "border-accent ring-1 ring-accent" : "border-line"
+              }`}
+            >
+              <span className={`text-[11px] font-medium ${t.color}`}>{t.label}</span>
+              <span className="text-[22px] font-bold">{t.count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ステータスフィルター & 追加ボタン */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === "all"
-                ? "bg-green-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
+      {/* 検索・カテゴリ */}
+      <div className="flex flex-col gap-2.5">
+        <label className="flex h-11 items-center gap-2 rounded-[10px] border border-line bg-surface px-3 text-muted focus-within:ring-2 focus-within:ring-accent">
+          <Icon name="search" size={18} />
+          <span className="sr-only">食品を検索</span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="食品を検索"
+            className="flex-1 bg-transparent text-sm text-ink outline-none"
+          />
+        </label>
+        <div className="scrollbar-hide -mx-5 flex gap-1.5 overflow-x-auto px-5">
+          <ChipToggle
+            size="sm"
+            selected={filter !== "frozen" && !categoryFilter && filter === "all"}
+            onClick={() => { setFilter("all"); setCategoryFilter(""); }}
           >
-            期限あり ({foods.filter((f) => !f.frozen).length})
-          </button>
-          <button
-            onClick={() => setFilter("urgent")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === "urgent"
-                ? "bg-orange-500 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
+            すべて
+          </ChipToggle>
+          {FOOD_CATEGORIES.map((c) => (
+            <ChipToggle
+              key={c.value}
+              size="sm"
+              selected={filter !== "frozen" && categoryFilter === c.value}
+              onClick={() => {
+                if (filter === "frozen") setFilter("all");
+                setCategoryFilter(categoryFilter === c.value && filter !== "frozen" ? "" : c.value);
+              }}
+            >
+              {c.label}
+            </ChipToggle>
+          ))}
+          <ChipToggle
+            size="sm"
+            selected={filter === "frozen"}
+            onClick={() => setFilter(filter === "frozen" ? "all" : "frozen")}
           >
-            ⚠️ 期限近い ({urgentCount})
-          </button>
-          <button
-            onClick={() => setFilter("expired")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === "expired"
-                ? "bg-gray-600 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            期限切れ ({expiredCount})
-          </button>
-          <button
-            onClick={() => setFilter("frozen")}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === "frozen"
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            🧊 冷凍中 ({frozenCount})
-          </button>
+            冷凍
+          </ChipToggle>
         </div>
+      </div>
+
+      {/* 一覧 */}
+      <section className="flex flex-col gap-2">
+        <h2 className="text-xs font-medium text-muted">期限が近い順</h2>
+        {filteredFoods.length === 0 ? (
+          <div className="rounded-xl border border-line bg-surface px-4 py-10 text-center">
+            <p className="text-sm font-medium text-muted">{emptyMessage}</p>
+            {foods.length === 0 && (
+              <p className="mt-1 text-xs text-muted">右下の「食品を追加」から登録しましょう</p>
+            )}
+          </div>
+        ) : (
+          <ul className="flex flex-col rounded-xl border border-line bg-surface">
+            {filteredFoods.map((food) => (
+              <FoodItem key={food.id} food={food} onEdit={openEditModal} />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* 追加ボタン */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(92px+env(safe-area-inset-bottom))] z-30 mx-auto flex w-full max-w-[480px] justify-end px-5">
         <button
+          type="button"
           onClick={() => setModalMode("add")}
-          className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors shadow-sm shrink-0 ml-2"
+          className="pointer-events-auto flex h-12 items-center gap-1.5 rounded-3xl bg-accent pr-5 pl-4 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
         >
-          <span>＋</span>
-          <span className="hidden sm:inline">食品を追加</span>
+          <Icon name="plus" size={18} />
+          食品を追加
         </button>
       </div>
 
-      {/* カテゴリフィルター（期限ありタブのみ表示） */}
-      {filter === "all" && (
-        <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-          {FOOD_CATEGORIES.map(({ value, emoji, label }) => (
-            <button
-              key={value}
-              onClick={() => setCategoryFilter(categoryFilter === value ? "" : value)}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border ${
-                categoryFilter === value
-                  ? "bg-green-600 text-white border-green-600"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-green-300"
-              }`}
-            >
-              <span>{emoji}</span>
-              <span>{label}</span>
-            </button>
-          ))}
-          {categoryFilter && (
-            <button
-              onClick={() => setCategoryFilter("")}
-              className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200"
-            >
-              ✕ 解除
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* 食品リスト */}
-      {filteredFoods.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">🥗</p>
-          <p className="text-lg font-medium text-gray-500">
-            {searchQuery.trim()
-              ? `「${searchQuery}」に一致する食品はありません`
-              : categoryFilter
-              ? `「${categoryFilter}」の食品はありません`
-              : filter === "all"     ? "期限が設定された食品はありません"
-              : filter === "urgent"  ? "期限が近い食品はありません"
-              : filter === "frozen"  ? "冷凍中の食品はありません"
-              : "期限切れの食品はありません"}
-          </p>
-          {!searchQuery.trim() && !categoryFilter && filter === "all" && (
-            <p className="text-sm mt-1">「食品を追加」ボタンから登録してみましょう</p>
-          )}
-          {!searchQuery.trim() && filter === "frozen" && (
-            <p className="text-sm mt-1">冷凍する食品を追加して「🧊 冷凍庫に入れる」をオンにしてみましょう</p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredFoods.map((food) => (
-            <FoodItem
-              key={food.id}
-              food={food}
-              onEdit={openEditModal}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* モーダル */}
+      {/* 追加・編集シート */}
       {modalMode && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setModalMode(null);
-              setEditingFood(null);
-            }
-          }}
+        <BottomSheet
+          title={modalMode === "add" ? "食品を追加" : "食品を編集"}
+          onClose={closeModal}
         >
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 overflow-y-auto max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
-            <h2 className="text-lg font-bold text-gray-800 mb-5">
-              {modalMode === "add" ? "🥬 食品を追加" : "✏️ 食品を編集"}
-            </h2>
-            <FoodForm
-              initialData={
-                editingFood
-                  ? {
-                      ...editingFood,
-                      expiryDate: editingFood.expiryDate
-                        ? new Date(editingFood.expiryDate).toISOString().split("T")[0]
-                        : "",
-                      expiryType: editingFood.expiryType as "消費期限" | "賞味期限",
-                      quantity: editingFood.quantity?.toString() ?? "",
-                      unit: editingFood.unit ?? "",
-                      frozen: editingFood.frozen,
-                      category: (editingFood.category as FoodCategory) ?? "",
-                      memo: editingFood.memo || "",
-                    }
-                  : undefined
-              }
-              nameSuggestions={nameSuggestions}
-              onSubmit={modalMode === "add" ? handleAdd : handleEdit}
-              onCancel={() => {
-                setModalMode(null);
-                setEditingFood(null);
-              }}
-              isSubmitting={submitting}
-            />
-          </div>
-        </div>
+          <FoodForm
+            initialData={
+              modalMode === "edit" && editingFood
+                ? {
+                    id: editingFood.id,
+                    name: editingFood.name,
+                    expiryType: editingFood.expiryType as "消費期限" | "賞味期限",
+                    expiryDate: editingFood.expiryDate
+                      ? new Date(editingFood.expiryDate).toISOString().split("T")[0]
+                      : "",
+                    quantity: editingFood.quantity != null ? String(editingFood.quantity) : "",
+                    unit: editingFood.unit ?? "",
+                    frozen: editingFood.frozen,
+                    category: (editingFood.category as FoodCategory) ?? "",
+                    memo: editingFood.memo ?? "",
+                  }
+                : undefined
+            }
+            nameSuggestions={nameSuggestions}
+            onSubmit={modalMode === "add" ? handleAdd : handleEdit}
+            onCancel={closeModal}
+            onDelete={
+              modalMode === "edit" && editingFood
+                ? async () => {
+                    if (!confirm(`「${editingFood.name}」を削除しますか？`)) return;
+                    await handleDelete(editingFood.id);
+                    closeModal();
+                  }
+                : undefined
+            }
+            isSubmitting={submitting}
+          />
+        </BottomSheet>
       )}
-    </div>
+    </>
   );
 }

@@ -32,7 +32,7 @@ function getDaysUntilExpiry(expiryDate: string): number {
 
 function getBadge(daysLeft: number): { className: string; label: string } {
   if (daysLeft < 0) return { className: "bg-danger-soft text-danger", label: "期限切れ" };
-  if (daysLeft === 0) return { className: "bg-danger-soft text-danger", label: "今日が期限" };
+  if (daysLeft === 0) return { className: "bg-warn-soft text-warn", label: "今日が期限" };
   if (daysLeft <= 3) return { className: "bg-warn-soft text-warn", label: `あと${daysLeft}日` };
   return { className: "bg-chip text-chip-ink", label: `あと${daysLeft}日` };
 }

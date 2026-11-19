@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
-import NavTabs from "@/components/NavTabs";
 
-const geist = Geist({
-  variable: "--font-geist-sans",
+const notoSansJP = Noto_Sans_JP({
+  variable: "--font-noto-sans-jp",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -19,31 +19,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-gray-50">
-        {/* 共通ヘッダー */}
-        <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-40">
-          <div className="max-w-2xl mx-auto px-4 pt-4 pb-2 flex flex-col gap-0">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🥬</span>
-              <div>
-                <h1 className="text-xl font-bold text-gray-800">ストックまどの家庭あれこれ</h1>
-                <p className="text-xs text-gray-500">消費期限・賞味期限切れにさせないわ👧</p>
-              </div>
-            </div>
-            <NavTabs />
-          </div>
-        </header>
-
-        {/* ページコンテンツ */}
-        <div className="flex-1 bg-linear-to-b from-green-50 to-gray-50">
+    <html lang="ja" className={`${notoSansJP.variable} h-full antialiased`}>
+      <body className="min-h-full">
+        {/* スマホ幅の1カラムを中央に固定 */}
+        <div className="relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-canvas sm:border-x sm:border-line">
           {children}
         </div>
-
-        {/* フッター */}
-        <footer className="text-center text-xs text-gray-400 py-6">
-          <p>ストックまどの家庭あれこれ</p>
-        </footer>
       </body>
     </html>
   );

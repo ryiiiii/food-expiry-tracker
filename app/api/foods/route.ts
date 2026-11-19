@@ -29,6 +29,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    if (expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) {
+      return NextResponse.json({ error: "期限日の形式が不正です" }, { status: 400 });
+    }
+    if (expiryDate && isNaN(new Date(expiryDate).getTime())) {
+      return NextResponse.json({ error: "期限日の形式が不正です" }, { status: 400 });
+    }
     // 冷凍でない場合は期限日が必須
     if (!frozen && !expiryDate) {
       return NextResponse.json(

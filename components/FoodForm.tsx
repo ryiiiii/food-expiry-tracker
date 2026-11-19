@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Icon from "@/components/ui/Icon";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import ChipToggle from "@/components/ui/ChipToggle";
+import Switch from "@/components/ui/Switch";
+import { addDays, toLocalDateString } from "@/lib/date";
+import { parseVoiceFood, endsWithSubmitCommand } from "@/lib/parseVoiceFood";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 
 export type FoodCategory = "生鮮" | "調味料" | "保存食";
 
@@ -28,16 +35,18 @@ type Props = {
   onSubmit: (data: FoodFormData) => Promise<void>;
   onCancel: () => void;
   isSubmitting?: boolean;
+  onDelete?: () => Promise<void>; // 編集時のみ: 削除
   nameSuggestions?: string[]; // 登録済み食品名の候補
 };
 
+const inputCls =
+  "h-12 w-full rounded-[10px] border border-field bg-surface px-3.5 text-[15px] text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/30";
+
 function defaultExpiryDate(): string {
-  const date = new Date();
-  date.setDate(date.getDate() + 5);
-  return date.toISOString().split("T")[0];
+  return toLocalDateString(addDays(new Date(), 5));
 }
 
-export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting, nameSuggestions = [] }: Props) {
+export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting, nameSuggestions = [], onDelete }: Props) {
   const [form, setForm] = useState<FoodFormData>({
     name: "",
     expiryType: "消費期限",
@@ -64,18 +73,63 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
     }
   }, [initialData]);
 
+  const [heard, setHeard] = useState("");
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  const { supported, listening, interim, error: voiceError, start, stop } = useSpeechRecognition(
+    (transcript) => {
+      setHeard(transcript);
+      setVoiceNotice(null);
+      const { submit, ...parsed } = parseVoiceFood(transcript);
+      const merged = { ...form, ...parsed };
+      setForm(merged);
+      if (!submit) return;
+      // 「追加して」で送信。必須項目が足りなければ送信せず知らせる
+      if (isSubmitting) return;
+      if (!merged.name.trim()) return setVoiceNotice("食品名が入力されていないため追加できません");
+      if (!merged.frozen && !merged.expiryDate) return setVoiceNotice("期限日が入力されていないため追加できません");
+      void onSubmit(merged);
+    },
+    endsWithSubmitCommand
+  );
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await onSubmit(form);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
+      {/* 音声入力 */}
+      {supported && (
+        <div>
+          <button
+            type="button"
+            onClick={listening ? stop : start}
+            className={`flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-3 text-sm font-medium ${
+              listening
+                ? "animate-pulse border-danger/40 bg-danger-soft text-danger"
+                : "border-field bg-surface text-ink"
+            }`}
+          >
+            <Icon name="mic" size={18} />
+            {listening ? "聞いています…（話し終えたらタップ）" : "音声で入力（例：牛乳 期限 明後日 数量 2個 追加して）"}
+          </button>
+          {listening && interim && (
+            <p className="mt-1.5 text-xs text-muted">「{interim}」</p>
+          )}
+          {heard && !listening && (
+            <p className="mt-1.5 text-xs text-muted">認識結果：「{heard}」</p>
+          )}
+          {voiceNotice && <p className="mt-1.5 text-xs text-danger">{voiceNotice}</p>}
+          {voiceError && <p className="mt-1.5 text-xs text-danger">{voiceError}</p>}
+        </div>
+      )}
+
       {/* 食品名 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          食品名 <span className="text-red-500">*</span>
-        </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium">
+          食品名 <span className="text-danger">*</span>
+        </span>
         <input
           type="text"
           list="name-suggestions"
@@ -83,7 +137,7 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           placeholder="例：牛乳、鶏もも肉"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          className={inputCls}
         />
         {nameSuggestions.length > 0 && (
           <datalist id="name-suggestions">
@@ -92,173 +146,155 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
             ))}
           </datalist>
         )}
-      </div>
+      </label>
 
       {/* 期限の種別 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          期限の種別 <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-4">
-          {(["消費期限", "賞味期限"] as const).map((type) => (
-            <label
-              key={type}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${
-                form.expiryType === type
-                  ? "border-green-500 bg-green-50 text-green-700"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <input
-                type="radio"
-                name="expiryType"
-                value={type}
-                checked={form.expiryType === type}
-                onChange={(e) => setForm({ ...form, expiryType: e.target.value as "消費期限" | "賞味期限" })}
-                className="sr-only"
-              />
-              <span className="text-sm font-medium">{type}</span>
-            </label>
-          ))}
-        </div>
-        <p className="text-xs text-gray-500 mt-1">
-          消費期限：食べても安全な期限　／　賞味期限：品質が保たれる期限
-        </p>
-      </div>
+      <fieldset className="m-0 flex min-w-0 flex-col gap-1.5 border-none p-0">
+        <legend className="mb-1.5 p-0 text-[13px] font-medium">
+          期限の種別 <span className="text-danger">*</span>
+        </legend>
+        <SegmentedControl
+          options={[
+            { value: "消費期限", label: "消費期限" },
+            { value: "賞味期限", label: "賞味期限" },
+          ]}
+          value={form.expiryType}
+          onChange={(expiryType) => setForm({ ...form, expiryType })}
+        />
+      </fieldset>
 
       {/* カテゴリ */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          カテゴリ（任意）
-        </label>
+      <fieldset className="m-0 min-w-0 border-none p-0">
+        <legend className="mb-2 p-0 text-[13px] font-medium">
+          カテゴリ <span className="font-normal text-muted">任意</span>
+        </legend>
         <div className="flex flex-wrap gap-2">
-          {FOOD_CATEGORIES.map(({ value, emoji, label }) => (
-            <button
+          {FOOD_CATEGORIES.map(({ value, label }) => (
+            <ChipToggle
               key={value}
-              type="button"
+              selected={form.category === value}
               onClick={() =>
                 setForm({ ...form, category: form.category === value ? "" : value })
               }
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                form.category === value
-                  ? "bg-green-600 text-white border-green-600"
-                  : "bg-white text-gray-600 border-gray-300 hover:border-green-400"
-              }`}
             >
-              <span>{emoji}</span>
-              <span>{label}</span>
-            </button>
+              {label}
+            </ChipToggle>
           ))}
         </div>
-      </div>
+      </fieldset>
 
-      {/* 冷凍トグル */}
+      {/* 冷凍 */}
       <div>
-        <label className="flex items-center gap-3 cursor-pointer select-none">
-          <div
-            onClick={() => setForm({ ...form, frozen: !form.frozen, expiryDate: !form.frozen ? "" : form.expiryDate })}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              form.frozen ? "bg-blue-500" : "bg-gray-300"
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                form.frozen ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </div>
-          <span className="text-sm font-medium text-gray-700">
-            🧊 冷凍庫に入れる
-          </span>
-        </label>
+        <Switch
+          label="冷凍庫に入れる"
+          checked={form.frozen}
+          onChange={(frozen) =>
+            setForm({ ...form, frozen, expiryDate: frozen ? "" : form.expiryDate })
+          }
+        />
         {form.frozen && (
-          <p className="text-xs text-blue-600 mt-1 ml-14">
-            冷凍中は期限日の管理は不要です
-          </p>
+          <p className="text-xs text-muted">冷凍品は期限日の入力が不要です</p>
         )}
       </div>
 
-      {/* 期限日（冷凍時は非表示） */}
+      {/* 期限日 */}
       {!form.frozen && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            期限日 <span className="text-red-500">*</span>
-          </label>
-          <div className="grid">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium">
+            期限日 <span className="text-danger">*</span>
+          </span>
+          <span className="flex h-12 items-center gap-2.5 rounded-[10px] border border-field bg-surface px-3.5 text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
+            <Icon name="calendar" size={18} />
             <input
               type="date"
               required
               value={form.expiryDate}
               onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none"
             />
-          </div>
-        </div>
+          </span>
+        </label>
       )}
 
       {/* 数量・単位 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          数量・単位（任意）
-        </label>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium">
+          数量・単位 <span className="font-normal text-muted">任意</span>
+        </span>
         <div className="flex gap-2">
-          <input
-            type="number"
-            min="1"
-            value={form.quantity}
-            onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            placeholder="例：2"
-            className="w-24 px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          />
-          <div className="flex-1">
+          <label className="w-[110px]">
+            <span className="sr-only">数量</span>
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={form.quantity}
+              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              placeholder="例：2"
+              className={inputCls}
+            />
+          </label>
+          <label className="flex-1">
+            <span className="sr-only">単位</span>
             <input
               type="text"
               list="unit-suggestions"
               value={form.unit}
               onChange={(e) => setForm({ ...form, unit: e.target.value })}
               placeholder="個・本・パック など"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className={inputCls}
             />
             <datalist id="unit-suggestions">
               {UNIT_SUGGESTIONS.map((u) => (
                 <option key={u} value={u} />
               ))}
             </datalist>
-          </div>
+          </label>
         </div>
       </div>
 
       {/* メモ */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          メモ（任意）
-        </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium">
+          メモ <span className="font-normal text-muted">任意</span>
+        </span>
         <textarea
           value={form.memo}
           onChange={(e) => setForm({ ...form, memo: e.target.value })}
           placeholder="保存場所や注意点など"
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+          className="h-[76px] w-full resize-none rounded-[10px] border border-field bg-surface px-3.5 py-3 text-[15px] text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
-      </div>
+      </label>
 
       {/* ボタン */}
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isSubmitting ? "保存中..." : initialData?.id ? "更新する" : "追加する"}
-        </button>
+      <div className="mt-1 flex gap-2.5">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          className="h-[50px] flex-1 rounded-xl bg-chip text-[15px] font-medium text-ink"
         >
           キャンセル
         </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="h-[50px] flex-1 rounded-xl bg-accent text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isSubmitting ? "保存中..." : initialData?.id ? "更新する" : "追加する"}
+        </button>
       </div>
+
+      {onDelete && (
+        <button
+          type="button"
+          onClick={() => void onDelete()}
+          className="flex h-11 items-center justify-center gap-1.5 text-sm font-medium text-danger"
+        >
+          <Icon name="trash" size={16} />
+          この食品を削除
+        </button>
+      )}
     </form>
   );
 }

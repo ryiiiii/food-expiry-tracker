@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Icon from "@/components/ui/Icon";
+import SegmentedControl from "@/components/ui/SegmentedControl";
+import ChipToggle from "@/components/ui/ChipToggle";
 
 export type ExpenseCategory = "食品・日用品" | "外食" | "光熱費" | "家賃" | "結婚式・旅行代の返済" | "その他";
 export type Payer = "まどか" | "りょう";
@@ -30,6 +33,9 @@ type Props = {
   onCancel: () => void;
   isSubmitting?: boolean;
 };
+
+const inputCls =
+  "h-12 w-full rounded-[10px] border border-field bg-surface px-3.5 text-[15px] text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/30";
 
 function todayString(): string {
   return new Date().toISOString().split("T")[0];
@@ -66,160 +72,132 @@ export default function ExpenseForm({ initialData, onSubmit, onCancel, isSubmitt
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]">
       {/* 金額 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          金額 <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">¥</span>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium">
+          金額 <span className="text-danger">*</span>
+        </span>
+        <span className="flex h-14 items-center gap-2 rounded-[10px] border border-field bg-surface px-3.5 focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
+          <span className="text-xl text-muted">¥</span>
           <input
             type="number"
             required
             min="1"
+            inputMode="numeric"
             value={form.amount}
             onChange={(e) => setForm({ ...form, amount: e.target.value })}
             placeholder="0"
-            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="min-w-0 flex-1 bg-transparent text-2xl font-bold text-ink outline-none"
           />
-        </div>
-      </div>
+        </span>
+      </label>
 
       {/* 支払項目 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          支払項目 <span className="text-red-500">*</span>
-        </label>
+      <fieldset className="m-0 min-w-0 border-none p-0">
+        <legend className="mb-2 p-0 text-[13px] font-medium">
+          支払項目 <span className="text-danger">*</span>
+        </legend>
         <div className="flex flex-wrap gap-2">
-          {EXPENSE_CATEGORIES.map(({ value, emoji }) => (
-            <button
+          {EXPENSE_CATEGORIES.map(({ value }) => (
+            <ChipToggle
               key={value}
-              type="button"
+              selected={form.category === value}
               onClick={() => setForm({ ...form, category: value, description: "" })}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                form.category === value
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
-              }`}
             >
-              <span>{emoji}</span>
-              <span>{value}</span>
-            </button>
+              {value}
+            </ChipToggle>
           ))}
         </div>
         {form.category === "その他" && (
           <input
             type="text"
             required
+            aria-label="支払内容"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="支払内容を入力"
-            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className={`mt-2 ${inputCls}`}
           />
         )}
-      </div>
+      </fieldset>
 
-      {/* 変動・固定 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          支払種別 <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-3">
-          {([false, true] as const).map((val) => (
-            <label
-              key={String(val)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${
-                form.isFixed === val
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <input
-                type="radio"
-                name="isFixed"
-                checked={form.isFixed === val}
-                onChange={() => setForm({ ...form, isFixed: val })}
-                className="sr-only"
-              />
-              <span className="text-sm font-medium">{val ? "固定" : "変動"}</span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      {/* 支払者 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          支払者 <span className="text-red-500">*</span>
-        </label>
-        <div className="flex gap-3">
-          {(["まどか", "りょう"] as const).map((p) => (
-            <label
-              key={p}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 cursor-pointer transition-colors ${
-                form.payer === p
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <input
-                type="radio"
-                name="payer"
-                value={p}
-                checked={form.payer === p}
-                onChange={() => setForm({ ...form, payer: p })}
-                className="sr-only"
-              />
-              <span className="text-sm font-medium">{p}</span>
-            </label>
-          ))}
-        </div>
+      {/* 変動・固定 / 支払者 */}
+      <div className="grid grid-cols-2 gap-3">
+        <fieldset className="m-0 min-w-0 border-none p-0">
+          <legend className="mb-2 p-0 text-[13px] font-medium">
+            支払種別 <span className="text-danger">*</span>
+          </legend>
+          <SegmentedControl
+            options={[
+              { value: "変動", label: "変動" },
+              { value: "固定", label: "固定" },
+            ]}
+            value={form.isFixed ? "固定" : "変動"}
+            onChange={(v) => setForm({ ...form, isFixed: v === "固定" })}
+          />
+        </fieldset>
+        <fieldset className="m-0 min-w-0 border-none p-0">
+          <legend className="mb-2 p-0 text-[13px] font-medium">
+            支払者 <span className="text-danger">*</span>
+          </legend>
+          <SegmentedControl
+            options={[
+              { value: "まどか", label: "まどか" },
+              { value: "りょう", label: "りょう" },
+            ]}
+            value={form.payer}
+            onChange={(payer) => setForm({ ...form, payer })}
+          />
+        </fieldset>
       </div>
 
       {/* 日付 */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          日付 <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="date"
-          required
-          value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-      </div>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium">
+          日付 <span className="text-danger">*</span>
+        </span>
+        <span className="flex h-12 items-center gap-2.5 rounded-[10px] border border-field bg-surface px-3.5 text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
+          <Icon name="calendar" size={18} />
+          <input
+            type="date"
+            required
+            value={form.date}
+            onChange={(e) => setForm({ ...form, date: e.target.value })}
+            className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none"
+          />
+        </span>
+      </label>
 
       {/* メモ */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          メモ
-        </label>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-[13px] font-medium">
+          メモ <span className="font-normal text-muted">任意</span>
+        </span>
         <input
           type="text"
           value={form.memo}
           onChange={(e) => setForm({ ...form, memo: e.target.value })}
           placeholder="任意のメモを入力"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className={inputCls}
         />
-      </div>
+      </label>
 
       {/* ボタン */}
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isSubmitting ? "保存中..." : initialData?.id ? "更新する" : "追加する"}
-        </button>
+      <div className="mt-1 flex gap-2.5">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+          className="h-[50px] flex-1 rounded-xl bg-chip text-[15px] font-medium text-ink"
         >
           キャンセル
+        </button>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="h-[50px] flex-1 rounded-xl bg-accent text-[15px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isSubmitting ? "保存中..." : initialData?.id ? "更新する" : "追加する"}
         </button>
       </div>
     </form>

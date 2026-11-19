@@ -30,6 +30,12 @@ Pages are thin server components; all state/UI lives in `"use client"` component
 - Prisma with the `prisma-client-js` generator and the **libsql driver adapter** (`lib/prisma.ts`): local SQLite file (`dev.db`) in dev, Turso (`libsql://` + `DATABASE_AUTH_TOKEN`) in production. Always import the shared `prisma` singleton from `@/lib/prisma`.
 - Schema in `prisma/schema.prisma`; enum-like fields (`expiryType`, `Expense.category`, `payer`) are plain strings whose allowed values are documented in schema comments and duplicated in the form components.
 
+### Authentication
+- Whole app is behind a login (name `ryo`/`madoka` + a random anniversary question answered as 8-digit `YYYYMMDD`). `proxy.ts` (Next 16's renamed middleware) verifies the signed `session` cookie; pages redirect to `/login`, `/api/*` returns 401. `/api/cron/*` and `/login` are excluded from the matcher (cron routes authenticate themselves with `CRON_SECRET`).
+- Tokens are HMAC-SHA256 signed with `node:crypto` (no JWT lib) — `lib/auth/token.ts`; sessions last 7 days. `SESSION_SECRET` (≥32 chars) is required; a missing/short secret fails closed.
+- Questions and answers live only in the `LOGIN_QUESTIONS` env var (JSON, see `.env.example`) and are checked server-side in `app/(auth)/login/actions.ts`; never put real answers in the repo. 5 wrong answers per name lock login for 15 min (`LoginAttempt` table, `lib/auth/lockout.ts`). The "◯◯に通知されます" warning is display-only — nothing is actually sent.
+- Pages live in the `app/(app)/` route group (header + bottom nav layout); the login page is in `app/(auth)/`.
+
 ### Cron jobs (`vercel.json`, Bearer `CRON_SECRET` auth)
 - `/api/cron/notify` (daily 00:00 UTC = 09:00 JST): Slack notification for foods expiring tomorrow, via `lib/slack.ts`; uses `Food.notified` to avoid repeats.
 - `/api/cron/monthly-expenses` (1st of month): materialises active `RecurringExpense` rows into `Expense` rows (`isFixed: true`, dated the 1st), skipping ones that already exist for that month.

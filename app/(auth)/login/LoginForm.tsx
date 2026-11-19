@@ -48,7 +48,7 @@ export default function LoginForm() {
             />
           </label>
           <p className="rounded-[10px] bg-warn-soft px-3.5 py-3 text-xs leading-relaxed text-warn">
-            間違った場合、{state.partner}に通知されるので注意してください。
+            間違った場合、{state.partner}に通知されるので覚悟を決めておいてください。
           </p>
         </div>
       )}

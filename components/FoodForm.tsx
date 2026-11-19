@@ -108,12 +108,13 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
             className={`flex h-11 w-full items-center justify-center gap-2 rounded-[10px] border px-3 text-sm font-medium ${
               listening
                 ? "animate-pulse border-danger/40 bg-danger-soft text-danger"
-                : "border-field bg-surface text-ink"
+                : "border-accent/40 bg-accent-soft text-accent"
             }`}
           >
             <Icon name="mic" size={18} />
-            {listening ? "聞いています…（話し終えたらタップ）" : "音声で入力（例：牛乳 期限 明後日 数量 2個 追加して）"}
+            {listening ? "聞いています…（話し終えたらタップ）" : "音声入力"}
           </button>
+          <p className="mt-1.5 text-xs text-muted">例：牛乳 期限 明後日 数量 2個 追加して</p>
           {listening && interim && (
             <p className="mt-1.5 text-xs text-muted">「{interim}」</p>
           )}

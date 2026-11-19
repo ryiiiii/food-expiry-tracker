@@ -26,7 +26,6 @@ export default function LoginForm() {
             autoCapitalize="none"
             autoCorrect="off"
             spellCheck={false}
-            placeholder="ryo または madoka"
             className={inputCls}
           />
         </label>
@@ -45,10 +44,8 @@ export default function LoginForm() {
               autoComplete="off"
               inputMode="numeric"
               maxLength={10}
-              placeholder="例：20250614"
               className={inputCls}
             />
-            <span className="text-xs text-muted">YYYYMMDD の8桁で入力</span>
           </label>
           <p className="rounded-[10px] bg-warn-soft px-3.5 py-3 text-xs leading-relaxed text-warn">
             間違った場合、{state.partner}に通知されるので注意してください。

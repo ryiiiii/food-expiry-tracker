@@ -17,7 +17,6 @@ export default async function LoginPage() {
         </span>
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold">ストックまどの家庭あれこれ</h1>
-          <p className="text-[13px] text-muted">ログインしてください</p>
         </div>
       </div>
       <LoginForm />

@@ -100,13 +100,9 @@ async function submitAnswer(formData: FormData): Promise<LoginState> {
     return { step: "name", error: LOCKED(lock.minutes) };
   }
 
-  // 形式が違う入力は照合せず、失敗回数にも数えない
+  // 形式が違う入力も「答えが違う」と同じ扱いにする（形式のヒントを出さない）
   const normalized = normalizeAnswer(String(formData.get("answer") ?? ""));
-  if (!normalized) {
-    return { step: "answer", ...view, error: "8桁の年月日（例：20250614）で入力してください。" };
-  }
-
-  if (answerMatches(normalized, question.answer)) {
+  if (normalized && answerMatches(normalized, question.answer)) {
     await clearFailures(name);
     await clearChallenge();
     await createSession(name);

@@ -161,11 +161,6 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
           value={form.expiryType}
           onChange={(expiryType) => setForm({ ...form, expiryType })}
         />
-        <p className="text-xs leading-relaxed text-muted">
-          消費期限：食べても安全な期限
-          <br />
-          賞味期限：品質が保たれる期限
-        </p>
       </fieldset>
 
       {/* カテゴリ */}

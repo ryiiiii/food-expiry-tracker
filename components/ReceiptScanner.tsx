@@ -15,6 +15,8 @@ type Row = {
   quantity: string;
   unit: string;
   category: FoodCategory | "";
+  /** 登録に失敗したときの理由（編集すると消える） */
+  error?: string;
 };
 
 type Phase = "idle" | "reading" | "review" | "saving" | "done";
@@ -92,7 +94,9 @@ export default function ReceiptScanner() {
 
   // ② 確認・編集
   const updateRow = (id: number, patch: Partial<Row>) =>
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...patch, error: undefined } : r))
+    );
   const removeRow = (id: number) => setRows((prev) => prev.filter((r) => r.id !== id));
   const addRow = () =>
     setRows((prev) => [
@@ -132,14 +136,20 @@ export default function ReceiptScanner() {
             memo: "",
           }),
         });
-        if (!res.ok) throw new Error("failed");
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error ?? "登録に失敗しました");
+        }
         return r.id;
       })
     );
 
-    const okIds = new Set(
-      results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))
-    );
+    const okIds = new Set<number>();
+    const errors = new Map<number, string>();
+    results.forEach((result, i) => {
+      if (result.status === "fulfilled") okIds.add(result.value);
+      else errors.set(targets[i].id, result.reason instanceof Error ? result.reason.message : "登録に失敗しました");
+    });
     const failed = targets.filter((r) => !okIds.has(r.id));
 
     if (failed.length === 0) {
@@ -147,12 +157,16 @@ export default function ReceiptScanner() {
       setPhase("done");
       return;
     }
-    // 失敗した分だけ残して、もう一度登録できるようにする
-    setRows(failed);
+    // 失敗した分だけ残し、どれが失敗したか分かるようにして、もう一度登録できるようにする
+    setRows(failed.map((r) => ({ ...r, error: errors.get(r.id) })));
     setPhase("review");
+    const names = failed.map((r) => `「${r.name.trim()}」`).join("");
     setError(
-      `${okIds.size}件を登録しましたが、${failed.length}件は失敗しました。残りをもう一度登録してください。`
+      `${okIds.size > 0 ? `${okIds.size}件を登録しました。` : ""}${failed.length}件は登録できませんでした：${names}。` +
+        "赤く表示した項目を確認して、もう一度登録してください。"
     );
+    // 最初の失敗項目までスクロール
+    setTimeout(() => document.getElementById(`row-${failed[0].id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 0);
   };
 
   // ── 表示 ──────────────────────────────────────────────
@@ -312,7 +326,18 @@ export default function ReceiptScanner() {
         <h2 className="text-xs font-medium text-muted">読み取り結果 · {rows.length}件</h2>
         <ul className="flex flex-col gap-2">
           {rows.map((r, i) => (
-            <li key={r.id} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3">
+            <li
+              key={r.id}
+              id={`row-${r.id}`}
+              className={`flex flex-col gap-2 rounded-xl border bg-surface p-3 ${
+                r.error ? "border-danger ring-1 ring-danger" : "border-line"
+              }`}
+            >
+              {r.error && (
+                <p className="rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs font-medium text-danger">
+                  登録に失敗しました{r.error !== "登録に失敗しました" && `：${r.error}`}
+                </p>
+              )}
               <div className="flex items-center gap-2">
                 <label className="flex-1">
                   <span className="sr-only">{i + 1}件目の食品名</span>

@@ -6,7 +6,7 @@ export default function Home() {
     <main className="flex flex-col gap-4 px-5 pt-2">
       <PageHeading
         title="食品管理"
-        subtitle="消費期限・賞味期限切れにさせないわ"
+        subtitle=""
       />
       <FoodList />
     </main>

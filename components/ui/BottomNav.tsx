@@ -8,6 +8,7 @@ const TABS: { href: string; icon: IconName; label: string }[] = [
   { href: "/", icon: "leaf", label: "食品管理" },
   { href: "/shopping", icon: "cart", label: "買い物リスト" },
   { href: "/accounting", icon: "wallet", label: "家計管理" },
+  { href: "/receipt", icon: "receipt", label: "レシート読取" },
 ];
 
 export default function BottomNav() {
@@ -16,7 +17,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="メインメニュー"
-      className="fixed bottom-0 left-1/2 z-40 grid h-[calc(72px+env(safe-area-inset-bottom))] w-full max-w-[480px] -translate-x-1/2 grid-cols-3 border-t border-line bg-surface pb-[calc(8px+env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-1/2 z-40 grid h-[calc(72px+env(safe-area-inset-bottom))] w-full max-w-[480px] -translate-x-1/2 grid-cols-4 border-t border-line bg-surface pb-[calc(8px+env(safe-area-inset-bottom))]"
     >
       {TABS.map(({ href, icon, label }) => {
         const active = pathname === href;

@@ -36,6 +36,10 @@ Pages are thin server components; all state/UI lives in `"use client"` component
 - Questions and answers live only in the `LOGIN_QUESTIONS` env var (JSON, see `.env.example`) and are checked server-side in `app/(auth)/login/actions.ts`; never put real answers in the repo. 5 wrong answers per name lock login for 15 min (`LoginAttempt` table, `lib/auth/lockout.ts`). The "◯◯に通知されます" warning is display-only — nothing is actually sent.
 - Pages live in the `app/(app)/` route group (header + bottom nav layout); the login page is in `app/(auth)/`.
 
+### Receipt scanning (`/receipt`)
+- Photo of a receipt → `POST /api/receipt/scan` (`app/api/receipt/scan/route.ts`) → Gemini API (`lib/gemini.ts`, plain `fetch` to `generateContent`, key in `GEMINI_API_KEY`, model via optional `GEMINI_MODEL`) → food candidates → user reviews/edits/discards in `components/ReceiptScanner.tsx` → registered one by one through the existing `POST /api/foods` with expiry = registration day + 7 days. Images are never stored.
+- The client downsizes photos first (`lib/resizeImage.ts`) to stay under Vercel's 4.5MB request limit. Model output is untrusted: always pass it through `sanitizeItems` (`lib/receipt.ts`). Free-tier Gemini content may be used by Google to improve its products.
+
 ### Cron jobs (`vercel.json`, Bearer `CRON_SECRET` auth)
 - `/api/cron/notify` (daily 00:00 UTC = 09:00 JST): Slack notification for foods expiring tomorrow, via `lib/slack.ts`; uses `Food.notified` to avoid repeats.
 - `/api/cron/monthly-expenses` (1st of month): materialises active `RecurringExpense` rows into `Expense` rows (`isFixed: true`, dated the 1st), skipping ones that already exist for that month.

@@ -14,7 +14,7 @@ npx prisma migrate dev # apply/create migrations (needs DATABASE_URL)
 npx prisma studio      # DB browser
 ```
 
-There is no test suite. Copy `.env.example` to `.env.local` for local setup (`DATABASE_URL="file:./dev.db"`, `SLACK_WEBHOOK_URL`, `CRON_SECRET`).
+There is no test suite. Copy `.env.example` to `.env.local` for local setup (`DATABASE_URL="file:./dev.db"`, `LINE_CHANNEL_ACCESS_TOKEN`, `LINE_USER_IDS`, `CRON_SECRET`).
 
 ## Architecture
 
@@ -41,7 +41,7 @@ Pages are thin server components; all state/UI lives in `"use client"` component
 - The client downsizes photos first (`lib/resizeImage.ts`) to stay under Vercel's 4.5MB request limit. Model output is untrusted: always pass it through `sanitizeItems` (`lib/receipt.ts`). Free-tier Gemini content may be used by Google to improve its products.
 
 ### Cron jobs (`vercel.json`, Bearer `CRON_SECRET` auth)
-- `/api/cron/notify` (daily 00:00 UTC = 09:00 JST): Slack notification for foods expiring tomorrow, via `lib/slack.ts`; uses `Food.notified` to avoid repeats.
+- `/api/cron/notify` (daily 00:00 UTC = 09:00 JST): LINE notification (Messaging API multicast to the user IDs in `LINE_USER_IDS`) for foods expiring tomorrow, via `lib/line.ts`; uses `Food.notified` to avoid repeats. A missing/invalid LINE config or a failed send throws, so `notified` stays false and the next run retries.
 - `/api/cron/monthly-expenses` (1st of month): materialises active `RecurringExpense` rows into `Expense` rows (`isFixed: true`, dated the 1st), skipping ones that already exist for that month.
 
 ### CI

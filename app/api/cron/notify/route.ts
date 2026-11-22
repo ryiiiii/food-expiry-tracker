@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendSlackNotification } from "@/lib/slack";
+import { sendLineNotification } from "@/lib/line";
 
 type FoodRecord = {
   id: number;
@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: "通知対象の食品はありません", count: 0 });
     }
 
-    // Slack通知を送信
-    await sendSlackNotification(foodsToNotify);
+    // LINE通知を送信（失敗・設定不備のときは例外 → notified を更新しない）
+    await sendLineNotification(foodsToNotify);
 
     // 通知済みに更新
     await prisma.food.updateMany({

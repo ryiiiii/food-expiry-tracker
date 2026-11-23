@@ -4,10 +4,13 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 import SegmentedControl from "@/components/ui/SegmentedControl";
+import UnitCombobox from "@/components/ui/UnitCombobox";
+import { invalidateUnitOptions } from "@/hooks/useUnitOptions";
 import { addDays, toLocalDateString } from "@/lib/date";
 import { resizeImageFile, type ResizedImage } from "@/lib/resizeImage";
 import { FOOD_CATEGORIES, type FoodCategory } from "./FoodForm";
 import type { ReceiptItem } from "@/lib/receipt";
+import { isValidDateString, sanitizeQuantity, validateFoodFields, type FoodField } from "@/lib/foodValidation";
 
 type Row = {
   id: number;
@@ -15,22 +18,91 @@ type Row = {
   quantity: string;
   unit: string;
   category: FoodCategory | "";
-  /** 登録に失敗したときの理由（編集すると消える） */
-  error?: string;
+  /** 登録できなかった理由と直し方（編集すると消える） */
+  error?: Problem;
 };
+
+/** 行ごとの問題: 何が原因か（reason）と、どう直せば登録できるか（fix）。field はその入力欄を赤くする */
+type Problem = { reason: string; fix: string; field?: FoodField };
+
+/** 全件に共通する問題（ログイン切れ・通信エラー・期限日など） */
+type GlobalProblem = {
+  kind: "auth" | "network" | "date";
+  reason: string;
+  fix: string;
+};
+
+const AUTH_PROBLEM: GlobalProblem = {
+  kind: "auth",
+  reason: "ログインの有効期限が切れました",
+  fix: "下のリンクからログインし直し、この画面に戻って、もう一度「食品管理に登録する」を押してください（入力内容はそのまま残っています）",
+};
+const NETWORK_PROBLEM: GlobalProblem = {
+  kind: "network",
+  reason: "通信できないか、応答がありません",
+  fix: "電波の良い場所で、もう一度「食品管理に登録する」を押してください（入力内容はそのまま残っています）。時間がかかっていた場合は、先に食品管理の一覧で、すでに登録されていないか確認してください",
+};
+const DATE_PROBLEM: GlobalProblem = {
+  kind: "date",
+  reason: "期限日が正しくありません",
+  fix: "上の「期限日」を、実在する日付で入力し直してください",
+};
+
+/** サーバーの失敗応答を、原因と直し方に直す */
+function classifyFailure(
+  status: number,
+  d: { error?: string; fix?: string; field?: FoodField }
+): { problem?: Problem; global?: GlobalProblem } {
+  if (status === 401) return { global: AUTH_PROBLEM };
+  if (status === 400 && d.field) {
+    return {
+      problem: {
+        reason: d.error ?? "入力内容が正しくありません",
+        fix: d.fix ?? "内容を確認してください",
+        field: d.field,
+      },
+    };
+  }
+  if (status === 400 && d.error?.includes("期限日")) return { global: DATE_PROBLEM };
+  if (status === 400) {
+    return {
+      problem: {
+        reason: d.error ?? "入力内容が正しくありません",
+        fix: "内容を確認して、もう一度登録してください",
+      },
+    };
+  }
+  return {
+    problem: {
+      reason: `サーバーでエラーが発生しました（${status}）`,
+      fix: "しばらく待ってから、もう一度「食品管理に登録する」を押してください（入力内容はそのまま残っています）",
+    },
+  };
+}
+
+type Outcome =
+  | { id: number; ok: true }
+  | { id: number; ok: false; problem?: Problem; global?: GlobalProblem };
 
 type Phase = "idle" | "reading" | "review" | "saving" | "done";
 
 const inputCls =
   "h-11 w-full rounded-[10px] border border-field bg-surface px-3 text-[15px] text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent/30";
 
+/** 問題のある入力欄は赤い枠にする */
+const fieldCls = (bad: boolean) => (bad ? inputCls.replace("border-field", "border-danger") : inputCls);
+
 /** 登録日の1週間後 */
+/** 登録1件あたりの待ち時間。これを超えたら通信エラーとして扱い、画面を操作できる状態に戻す */
+const REGISTER_TIMEOUT_MS = 20_000;
+
 const defaultExpiry = () => toLocalDateString(addDays(new Date(), 7));
 
 export default function ReceiptScanner() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
+  const registering = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +112,8 @@ export default function ReceiptScanner() {
   const [expiryDate, setExpiryDate] = useState<string | null>(null);
   const [expiryType, setExpiryType] = useState<"消費期限" | "賞味期限">("消費期限");
   const [savedCount, setSavedCount] = useState(0);
+  const [notice, setNotice] = useState<GlobalProblem | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const toRow = (item: ReceiptItem): Row => ({
     id: nextId.current++,
@@ -56,6 +130,8 @@ export default function ReceiptScanner() {
     setRows([]);
     setExpiryDate(null);
     setSavedCount(0);
+    setNotice(null);
+    setDateError(null);
   };
 
   // ① 撮影した画像を読み取る
@@ -63,16 +139,27 @@ export default function ReceiptScanner() {
     if (!file) return;
     setError(null);
     setPhase("reading");
+    let resized: ResizedImage;
     try {
-      const resized = await resizeImageFile(file);
-      setImage(resized);
-
+      resized = await resizeImageFile(file);
+    } catch {
+      setPhase("idle");
+      setError("画像を読み込めませんでした。JPEG か PNG の写真を選んで、もう一度お試しください。");
+      return;
+    }
+    setImage(resized);
+    try {
       const res = await fetch("/api/receipt/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: resized.base64, mimeType: resized.mimeType }),
       });
       const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        throw new Error(
+          "ログインの有効期限が切れました。ログイン画面を別のタブで開いてログインし直してから、もう一度お試しください。"
+        );
+      }
       if (!res.ok) throw new Error(data.error ?? "読み取りに失敗しました");
 
       const items = (data.items ?? []) as ReceiptItem[];
@@ -88,7 +175,13 @@ export default function ReceiptScanner() {
     } catch (e) {
       setPhase("idle");
       setImage(null);
-      setError(e instanceof Error ? e.message : "読み取りに失敗しました");
+      setError(
+        e instanceof TypeError
+          ? "通信できませんでした。電波の良い場所で、もう一度お試しください。"
+          : e instanceof Error
+            ? e.message
+            : "読み取りに失敗しました"
+      );
     }
   };
 
@@ -110,63 +203,102 @@ export default function ReceiptScanner() {
   };
 
   // ③ 食品管理へ本登録（既存の POST /api/foods を1件ずつ呼ぶ）
-  const register = async () => {
-    const targets = rows.filter((r) => r.name.trim());
-    if (targets.length === 0) {
-      setError("登録する食品がありません。");
-      return;
-    }
+  const runRegister = async () => {
     setError(null);
-    setPhase("saving");
+    setNotice(null);
+    setDateError(null);
     const date = expiryDate ?? defaultExpiry(); // 未編集なら、登録した日の1週間後
 
-    const results = await Promise.allSettled(
-      targets.map(async (r) => {
-        const res = await fetch("/api/foods", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: r.name.trim(),
-            expiryType,
-            expiryDate: date,
-            quantity: r.quantity,
-            unit: r.unit.trim(),
-            frozen: false,
-            category: r.category,
-            memo: "",
-          }),
-        });
-        if (!res.ok) {
+    if (rows.length === 0) {
+      setError("登録する食品がありません。「項目を追加」から追加してください。");
+      return;
+    }
+    if (!isValidDateString(date)) {
+      setNotice(DATE_PROBLEM);
+      setDateError(DATE_PROBLEM.fix);
+      return;
+    }
+    setPhase("saving");
+
+    const outcomes: Outcome[] = await Promise.all(
+      rows.map(async (r): Promise<Outcome> => {
+        // 登録できない入力は、送信せずに原因と直し方を出す
+        const pre = validateFoodFields({ name: r.name, quantity: r.quantity, unit: r.unit });
+        if (pre) return { id: r.id, ok: false, problem: pre };
+        try {
+          const res = await fetch("/api/foods", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: r.name.trim(),
+              expiryType,
+              expiryDate: date,
+              quantity: r.quantity,
+              unit: r.unit.trim(),
+              frozen: false,
+              category: r.category,
+              memo: "",
+            }),
+            signal: AbortSignal.timeout(REGISTER_TIMEOUT_MS),
+          });
+          if (res.ok) return { id: r.id, ok: true };
           const d = await res.json().catch(() => ({}));
-          throw new Error(d.error ?? "登録に失敗しました");
+          return { id: r.id, ok: false, ...classifyFailure(res.status, d) };
+        } catch {
+          return { id: r.id, ok: false, global: NETWORK_PROBLEM };
         }
-        return r.id;
       })
     );
 
-    const okIds = new Set<number>();
-    const errors = new Map<number, string>();
-    results.forEach((result, i) => {
-      if (result.status === "fulfilled") okIds.add(result.value);
-      else errors.set(targets[i].id, result.reason instanceof Error ? result.reason.message : "登録に失敗しました");
-    });
-    const failed = targets.filter((r) => !okIds.has(r.id));
+    const okCount = outcomes.filter((o) => o.ok).length;
+    if (okCount > 0) invalidateUnitOptions();
+    const failedOutcomes = outcomes.filter((o): o is Extract<Outcome, { ok: false }> => !o.ok);
 
-    if (failed.length === 0) {
-      setSavedCount(okIds.size);
+    if (failedOutcomes.length === 0) {
+      setSavedCount(okCount);
       setPhase("done");
       return;
     }
-    // 失敗した分だけ残し、どれが失敗したか分かるようにして、もう一度登録できるようにする
-    setRows(failed.map((r) => ({ ...r, error: errors.get(r.id) })));
+
+    // 失敗した食品だけを残し、行ごとの原因と直し方、全体に共通する原因を表示する
+    const problemById = new Map(failedOutcomes.map((o) => [o.id, o.problem]));
+    const remaining = rows.filter((r) => problemById.has(r.id));
+    setRows(remaining.map((r) => ({ ...r, error: problemById.get(r.id) })));
+
+    const global = failedOutcomes.find((o) => o.global)?.global ?? null;
+    setNotice(global);
+    if (global?.kind === "date") setDateError(global.fix);
+
+    const namedProblems = remaining.filter((r) => problemById.get(r.id));
+    const names = namedProblems.map((r) => `「${r.name.trim() || "（名前なし）"}」`).join("");
     setPhase("review");
-    const names = failed.map((r) => `「${r.name.trim()}」`).join("");
     setError(
-      `${okIds.size > 0 ? `${okIds.size}件を登録しました。` : ""}${failed.length}件は登録できませんでした：${names}。` +
-        "赤く表示した項目を確認して、もう一度登録してください。"
+      `${okCount > 0 ? `${okCount}件を登録しました。` : ""}${remaining.length}件が未登録です。` +
+        (names ? `登録できなかった食品：${names}。` : "") +
+        "赤い表示で、原因と直し方を確認してください。"
     );
-    // 最初の失敗項目までスクロール
-    setTimeout(() => document.getElementById(`row-${failed[0].id}`)?.scrollIntoView({ block: "center", behavior: "smooth" }), 0);
+    setTimeout(() => {
+      const first = namedProblems[0];
+      const target = first ? document.getElementById(`row-${first.id}`) : document.getElementById("register-notice");
+      target?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 0);
+  };
+
+  // 二重に押されても1回だけ実行し、想定外の例外が起きても「登録中…」のまま止まらないようにする
+  const register = async () => {
+    if (registering.current) return;
+    registering.current = true;
+    try {
+      await runRegister();
+    } catch (e) {
+      console.error("register failed:", e);
+      setPhase("review");
+      setError(
+        "登録中に予期しないエラーが発生しました。入力内容は残っています。もう一度「食品管理に登録する」を押してください。"
+      );
+    } finally {
+      registering.current = false;
+    }
   };
 
   // ── 表示 ──────────────────────────────────────────────
@@ -308,16 +440,25 @@ export default function ReceiptScanner() {
           <span className="text-[13px] font-medium">
             期限日 <span className="font-normal text-muted">初期値は登録日の1週間後</span>
           </span>
-          <span className="flex h-11 items-center gap-2.5 rounded-[10px] border border-field bg-surface px-3 text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30">
+          <span
+            className={`flex h-11 items-center gap-2.5 rounded-[10px] border bg-surface px-3 text-muted focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/30 ${
+              dateError ? "border-danger" : "border-field"
+            }`}
+          >
             <Icon name="calendar" size={18} />
             <input
               type="date"
               required
               value={shownDate}
-              onChange={(e) => setExpiryDate(e.target.value || null)}
+              onChange={(e) => {
+                setExpiryDate(e.target.value || null);
+                setDateError(null);
+              }}
+              aria-invalid={!!dateError}
               className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none"
             />
           </span>
+          {dateError && <span className="text-xs text-danger">{dateError}</span>}
         </label>
       </div>
 
@@ -334,9 +475,10 @@ export default function ReceiptScanner() {
               }`}
             >
               {r.error && (
-                <p className="rounded-lg bg-danger-soft px-2.5 py-1.5 text-xs font-medium text-danger">
-                  登録に失敗しました{r.error !== "登録に失敗しました" && `：${r.error}`}
-                </p>
+                <div role="alert" className="rounded-lg bg-danger-soft px-2.5 py-2 text-xs leading-relaxed text-danger">
+                  <p className="font-bold">登録できません：{r.error.reason}</p>
+                  <p className="mt-0.5">直し方：{r.error.fix}</p>
+                </div>
               )}
               <div className="flex items-center gap-2">
                 <label className="flex-1">
@@ -346,7 +488,8 @@ export default function ReceiptScanner() {
                     value={r.name}
                     onChange={(e) => updateRow(r.id, { name: e.target.value })}
                     placeholder="食品名"
-                    className={inputCls}
+                    aria-invalid={r.error?.field === "name"}
+                    className={fieldCls(r.error?.field === "name")}
                   />
                 </label>
                 <button
@@ -362,25 +505,26 @@ export default function ReceiptScanner() {
                 <label className="w-20">
                   <span className="sr-only">数量</span>
                   <input
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    value={r.quantity}
-                    onChange={(e) => updateRow(r.id, { quantity: e.target.value })}
-                    placeholder="数量"
-                    className={inputCls}
-                  />
-                </label>
-                <label className="w-24">
-                  <span className="sr-only">単位</span>
-                  <input
                     type="text"
-                    value={r.unit}
-                    onChange={(e) => updateRow(r.id, { unit: e.target.value })}
-                    placeholder="単位"
-                    className={inputCls}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={4}
+                    value={r.quantity}
+                    onChange={(e) => updateRow(r.id, { quantity: sanitizeQuantity(e.target.value) })}
+                    placeholder="数量"
+                    aria-invalid={r.error?.field === "quantity"}
+                    className={fieldCls(r.error?.field === "quantity")}
                   />
                 </label>
+                <div className="w-28">
+                  <UnitCombobox
+                    size="md"
+                    placeholder="単位"
+                    value={r.unit}
+                    onChange={(unit) => updateRow(r.id, { unit })}
+                    invalid={r.error?.field === "unit"}
+                  />
+                </div>
                 <label className="flex-1">
                   <span className="sr-only">カテゴリ</span>
                   <select
@@ -409,6 +553,27 @@ export default function ReceiptScanner() {
           項目を追加
         </button>
       </div>
+
+      {notice && (
+        <div
+          id="register-notice"
+          role="alert"
+          className="rounded-[10px] bg-danger-soft px-3.5 py-3 text-sm leading-relaxed text-danger"
+        >
+          <p className="font-bold">原因：{notice.reason}</p>
+          <p className="mt-1">直し方：{notice.fix}</p>
+          {notice.kind === "auth" && (
+            <Link
+              href="/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block font-medium underline"
+            >
+              ログイン画面を別のタブで開く
+            </Link>
+          )}
+        </div>
+      )}
 
       {error && (
         <p aria-live="polite" className="rounded-[10px] bg-danger-soft px-3.5 py-3 text-sm text-danger">

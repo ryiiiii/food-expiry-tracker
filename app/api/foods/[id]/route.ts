@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validateFoodFields } from "@/lib/foodValidation";
 
 // 食品更新
 export async function PUT(
@@ -22,6 +23,13 @@ export async function PUT(
         { status: 400 }
       );
     }
+    const problem = validateFoodFields({ name, quantity, unit });
+    if (problem) {
+      return NextResponse.json(
+        { error: problem.reason, fix: problem.fix, field: problem.field },
+        { status: 400 }
+      );
+    }
     if (expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) {
       return NextResponse.json({ error: "期限日の形式が不正です" }, { status: 400 });
     }
@@ -38,7 +46,7 @@ export async function PUT(
     const food = await prisma.food.update({
       where: { id: foodId },
       data: {
-        name,
+        name: String(name).trim(),
         expiryType,
         expiryDate: expiryDate ? new Date(expiryDate) : null,
         quantity: quantity ? parseInt(quantity, 10) : null,

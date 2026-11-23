@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import BottomSheet from "@/components/ui/BottomSheet";
+import { invalidateUnitOptions } from "@/hooks/useUnitOptions";
 import Icon from "@/components/ui/Icon";
 import ChipToggle from "@/components/ui/ChipToggle";
 import FoodItem, { type Food } from "./FoodItem";
@@ -62,6 +63,7 @@ export default function FoodList() {
       if (!res.ok) throw new Error("追加に失敗しました");
       await fetchFoods();
       fetchNameSuggestions();
+      invalidateUnitOptions();
       setModalMode(null);
     } catch (e) {
       alert(e instanceof Error ? e.message : "エラーが発生しました");
@@ -81,6 +83,7 @@ export default function FoodList() {
       });
       if (!res.ok) throw new Error("更新に失敗しました");
       await fetchFoods();
+      invalidateUnitOptions();
       setModalMode(null);
       setEditingFood(null);
     } catch (e) {

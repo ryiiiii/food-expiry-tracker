@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validateFoodFields } from "@/lib/foodValidation";
 
 // 食品一覧取得
 export async function GET() {
@@ -29,12 +30,20 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    const problem = validateFoodFields({ name, quantity, unit });
+    if (problem) {
+      return NextResponse.json(
+        { error: problem.reason, fix: problem.fix, field: problem.field },
+        { status: 400 }
+      );
+    }
     if (expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) {
       return NextResponse.json({ error: "期限日の形式が不正です" }, { status: 400 });
     }
     if (expiryDate && isNaN(new Date(expiryDate).getTime())) {
       return NextResponse.json({ error: "期限日の形式が不正です" }, { status: 400 });
     }
+    const cleanName = String(name).trim();
     // 冷凍でない場合は期限日が必須
     if (!frozen && !expiryDate) {
       return NextResponse.json(
@@ -46,7 +55,7 @@ export async function POST(request: NextRequest) {
     const [food] = await prisma.$transaction([
       prisma.food.create({
         data: {
-          name,
+          name: cleanName,
           expiryType,
           expiryDate: expiryDate ? new Date(expiryDate) : null,
           quantity: quantity ? parseInt(quantity, 10) : null,
@@ -58,9 +67,9 @@ export async function POST(request: NextRequest) {
         },
       }),
       prisma.foodName.upsert({
-        where: { name },
+        where: { name: cleanName },
         update: {},
-        create: { name },
+        create: { name: cleanName },
       }),
     ]);
 

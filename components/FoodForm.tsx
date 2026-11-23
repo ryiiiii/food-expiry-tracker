@@ -5,6 +5,8 @@ import Icon from "@/components/ui/Icon";
 import SegmentedControl from "@/components/ui/SegmentedControl";
 import ChipToggle from "@/components/ui/ChipToggle";
 import Switch from "@/components/ui/Switch";
+import UnitCombobox from "@/components/ui/UnitCombobox";
+import { sanitizeQuantity } from "@/lib/foodValidation";
 import { addDays, toLocalDateString } from "@/lib/date";
 import { parseVoiceFood, endsWithSubmitCommand } from "@/lib/parseVoiceFood";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -27,8 +29,6 @@ export type FoodFormData = {
   category: FoodCategory | "";
   memo: string;
 };
-
-const UNIT_SUGGESTIONS = ["個", "本", "パック", "袋", "枚", "切れ", "束", "缶", "瓶", "箱", "g", "kg", "ml", "L", "人前"];
 
 type Props = {
   initialData?: FoodFormData & { id?: number };
@@ -226,31 +226,22 @@ export default function FoodForm({ initialData, onSubmit, onCancel, isSubmitting
           <label className="w-[110px]">
             <span className="sr-only">数量</span>
             <input
-              type="number"
-              min="1"
+              type="text"
               inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={4}
               value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+              onChange={(e) => setForm({ ...form, quantity: sanitizeQuantity(e.target.value) })}
               placeholder="例：2"
               className={inputCls}
             />
           </label>
-          <label className="flex-1">
-            <span className="sr-only">単位</span>
-            <input
-              type="text"
-              list="unit-suggestions"
+          <div className="flex-1">
+            <UnitCombobox
               value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              placeholder="個・本・パック など"
-              className={inputCls}
+              onChange={(unit) => setForm({ ...form, unit })}
             />
-            <datalist id="unit-suggestions">
-              {UNIT_SUGGESTIONS.map((u) => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
-          </label>
+          </div>
         </div>
       </div>
 
